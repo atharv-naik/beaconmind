@@ -9,7 +9,7 @@ User = get_user_model()
 class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
-        fields = ('id', 'username', 'email', 'phone', 'address', 'is_doctor', 'is_patient', 'password', 'first_name', 'last_name')
+        fields = ('id', 'username', 'email', 'phone', 'address', 'is_doctor', 'is_patient', 'password')
         extra_kwargs = {
             'password': {'write_only': True, 'required': True},
             'username': {'required': True},
@@ -23,11 +23,9 @@ class UserSerializer(serializers.ModelSerializer):
         user.is_doctor = is_doctor
         user.is_patient = is_patient
         user.save()
-
         if is_doctor:
             Doctor.objects.create(user=user)
         elif is_patient:
             Patient.objects.create(user=user)
-
         Token.objects.create(user=user)
         return user

@@ -3,11 +3,10 @@ from django.conf import settings
 
 
 class Conversation(models.Model):
-    title = models.CharField(max_length=100, unique=True)
-    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE)
 
     def __str__(self):
-        return f"{self.user}:{self.title}"
+        return f"{self.user.username}'s conversation"
 
 class ChatMessage(models.Model):
     id = models.AutoField(primary_key=True)
