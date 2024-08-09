@@ -27,5 +27,5 @@ class UserSerializer(serializers.ModelSerializer):
             Doctor.objects.create(user=user)
         elif is_patient:
             Patient.objects.create(user=user)
-        Token.objects.create(user=user)
+        token = Token.objects.create(user=user)
         return user

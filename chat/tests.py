@@ -1,3 +1,34 @@
-from django.test import TestCase
+from django.urls import reverse
+from rest_framework import status
+from rest_framework.test import APITestCase, APIClient
+from django.contrib.auth import get_user_model
+from rest_framework.authtoken.models import Token
+from .models import Conversation, ChatMessage
 
-# Create your tests here.
+
+User = get_user_model()
+
+class ChatTests(APITestCase):
+
+    def setUp(self):
+        self.client = APIClient()
+        self.user = User.objects.create_user(username='testuser', password='testpassword', is_patient=True)
+        self.token = Token.objects.create(user=self.user)
+        self.client.credentials(HTTP_AUTHORIZATION='Token ' + self.token.key)
+        self.conversation = Conversation.objects.create(user=self.user)
+        self.chat_url = reverse('chat')
+
+    def test_chat_post(self):
+        data = {'prompt': 'Hello, how are you?'}
+        response = self.client.post(self.chat_url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertIn('ai_response', response.data)
+        self.assertTrue(ChatMessage.objects.filter(conversation=self.conversation).exists())
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+    def test_chat_get(self):
+        ChatMessage.objects.create(conversation=self.conversation, user_response='Hello', ai_response='Hi')
+        response = self.client.get(self.chat_url, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertEqual(len(response.data), 1)
+        self.assertIn('user_response', response.data.get('data')[0])

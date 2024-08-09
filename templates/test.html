@@ -1,0 +1,36 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Expandable Textarea</title>
+    <style>
+        textarea {
+            width: 100%;
+            overflow: hidden; /* Prevents scrollbar */
+            resize: none;    /* Prevents manual resizing */
+        }
+    </style>
+</head>
+<body>
+
+<textarea id="customTextarea" rows="1" placeholder="Type something..."></textarea>
+
+<script>
+    const textarea = document.getElementById('customTextarea');
+
+    textarea.addEventListener('input', () => {
+        // Reset the height to calculate the new size
+        textarea.style.height = 'auto';
+        
+        // Set the height based on the scrollHeight, but constrain between 1 to 5 rows
+        textarea.style.height = Math.min(textarea.scrollHeight, 5 * 24) + 'px';
+        
+        // Calculate the number of rows based on scrollHeight
+        const rows = Math.floor(textarea.scrollHeight / 24);
+        textarea.rows = Math.min(rows, 5);
+    });
+</script>
+
+</body>
+</html>

@@ -13,6 +13,7 @@ class ChatMessage(models.Model):
     conversation = models.ForeignKey(Conversation, default=None, on_delete=models.CASCADE)
     user_response = models.TextField(null=True, default='')
     ai_response = models.TextField(null=True, default='')
+    meta_data = models.JSONField(null=True, default=dict)
     timestamp = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
