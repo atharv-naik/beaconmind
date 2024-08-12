@@ -12,11 +12,11 @@ class ChatTests(APITestCase):
 
     def setUp(self):
         self.client = APIClient()
-        self.user = User.objects.create_user(username='testuser', password='testpassword', is_patient=True)
+        self.user = User.objects.create_user(username='testuser', password='testpassword', role='patient')
         self.token = Token.objects.create(user=self.user)
         self.client.credentials(HTTP_AUTHORIZATION='Token ' + self.token.key)
         self.conversation = Conversation.objects.create(user=self.user)
-        self.chat_url = reverse('chat')
+        self.chat_url = reverse('chat:chat')
 
     def test_chat_post(self):
         data = {'prompt': 'Hello, how are you?'}

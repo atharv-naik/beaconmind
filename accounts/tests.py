@@ -10,15 +10,14 @@ class AuthTests(APITestCase):
 
     def setUp(self):
         self.client = APIClient()
-        self.register_url = reverse('register')
-        self.auth_url = reverse('get-auth')
+        self.register_url = reverse('accounts:api-register')
+        self.auth_url = reverse('accounts:api-get-auth')
         self.user_data = {
             'username': 'testuser',
             'email': 'testuser@example.com',
             'phone': '1234567890',
             'address': '123 Test St',
-            'is_doctor': False,
-            'is_patient': True,
+            'role': 'staff',
             'password': 'testpassword'
         }
 
@@ -28,19 +27,19 @@ class AuthTests(APITestCase):
         self.assertTrue(User.objects.filter(username='testuser').exists())
 
     def test_register_doctor(self):
-        self.user_data['is_doctor'] = True
-        self.user_data['is_patient'] = False
+        self.user_data['role'] = 'doctor'
         response = self.client.post(self.register_url, self.user_data, format='json')
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         user = User.objects.get(username='testuser')
-        self.assertTrue(user.is_doctor)
+        self.assertEqual(user.role, 'doctor')
         self.assertTrue(hasattr(user, 'doctor'))
 
     def test_register_patient(self):
+        self.user_data['role'] = 'patient'
         response = self.client.post(self.register_url, self.user_data, format='json')
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         user = User.objects.get(username='testuser')
-        self.assertTrue(user.is_patient)
+        self.assertEqual(user.role, 'patient')
         self.assertTrue(hasattr(user, 'patient'))
 
     def test_obtain_auth_token(self):

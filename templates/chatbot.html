@@ -1,3 +1,4 @@
+{% load static %}
 <!DOCTYPE html>
 <html lang="en">
   <head>
@@ -17,7 +18,6 @@
         background-color: #272727;
         margin: 0;
         padding: 0;
-        display: flex;
         flex-direction: column;
         height: 100vh;
         justify-content: space-between;
@@ -46,14 +46,16 @@
         gap: 10px;
       }
       .account-circle {
-        width: 40px;
-        height: 40px;
+        width: 30px;
+        height: 30px;
         border-radius: 50%;
         background-color: #ccc;
         display: grid;
         place-items: center;
         color: #272727;
-        font-size: 1.2em;
+        font-size: 1em;
+        cursor: pointer;
+        user-select: none;
       }
       .chat-container {
         width: min(800px, 100vw);
@@ -237,7 +239,7 @@
           </svg>
           <span>Chat Interface</span>
         </div>
-        <div class="account-circle">P</div>
+        <div class="account-circle" title="{{ user.username }}">{{ user.username|slice:1 }}</div>
       </div>
 
       <div class="chat-container" id="chat-container">
@@ -273,7 +275,27 @@
       const chatContainer = document.getElementById("chat-container");
       const userInput = document.getElementById("user-input");
       const sendButton = document.getElementById("send-button");
-      const URL = "http://localhost:8000/";
+      const csrftoken = getCookie("csrftoken");
+      const URL = "http://localhost:8000/api/";
+      //const URL = "https://e496-14-139-220-33.ngrok-free.app/api/";
+
+      function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== "") {
+          const cookies = document.cookie.split(";");
+          for (let i = 0; i < cookies.length; i++) {
+            const cookie = cookies[i].trim();
+            // Does this cookie string begin with the name we want?
+            if (cookie.substring(0, name.length + 1) === name + "=") {
+              cookieValue = decodeURIComponent(
+                cookie.substring(name.length + 1)
+              );
+              break;
+            }
+          }
+        }
+        return cookieValue;
+      }
 
       function createMessageElement(text, sender, timestamp) {
         const messageDiv = document.createElement("div");
@@ -346,11 +368,11 @@
           const response = await fetch(`${URL}chat/`, {
             method: "GET",
             headers: {
-              Authorization: `Token ${localStorage.getItem("token")}`,
               "Content-Type": "application/json",
             },
           });
           const data = await response.json();
+          console.log(data.data);
           data.data.forEach((msg) => {
             const timestamp = new Date(msg.timestamp).toLocaleTimeString();
             appendMessage(msg.user_response, "user", timestamp);
@@ -375,7 +397,8 @@
           const response = await fetch(`${URL}chat/`, {
             method: "POST",
             headers: {
-              Authorization: `Token ${localStorage.getItem("token")}`,
+              "X-CSRFToken": csrftoken,
+              "mode": "same-origin",
               "Content-Type": "application/json",
             },
             body: JSON.stringify({ query: messageText }),

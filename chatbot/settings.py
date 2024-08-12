@@ -40,13 +40,17 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
     'rest_framework',
     'rest_framework.authtoken',
+    'crispy_forms',
+    'crispy_bootstrap5',
+    'accounts',
     'chat',
-    'authentication',
 ]
 
 CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOW_PRIVATE_NETWORK = True
+
+CSRF_TRUSTED_ORIGINS = ['https://e496-14-139-220-33.ngrok-free.app']
 
 
 MIDDLEWARE = [
@@ -111,7 +115,14 @@ AUTH_PASSWORD_VALIDATORS = [
 ]
 
 # User model
-AUTH_USER_MODEL = 'authentication.User'
+AUTH_USER_MODEL = 'accounts.User'
+
+# Login url
+LOGIN_URL = 'accounts:login'
+
+
+# Crispy forms
+CRISPY_TEMPLATE_PACK = 'bootstrap5'
 
 
 # Internationalization

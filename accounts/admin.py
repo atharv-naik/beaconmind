@@ -8,8 +8,8 @@ admin.site.site_header = 'Patient Monitoring Chatbot Admin'
 
 class UserAdmin(UserAdmin):
     model = User
-    list_display = ["username", "phone", "address", "is_doctor", "is_patient"]
-
+    list_display = ["username", "email", "phone", "address", "role"]
+    list_filter = ["role", "is_staff", "is_superuser", "is_active", "groups"]
     fieldsets = (
         (None, {"fields": ("username", "password")}),
         (_("Personal info"), {"fields": (
@@ -18,8 +18,7 @@ class UserAdmin(UserAdmin):
             "email",
             "phone", 
             "address", 
-            "is_doctor", 
-            "is_patient"
+            "role",
             )
         }),
         (

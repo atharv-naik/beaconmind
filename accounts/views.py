@@ -4,13 +4,12 @@ from django.contrib.auth import get_user_model
 from django.contrib.auth import authenticate
 from rest_framework import status
 from rest_framework.response import Response
-from django.http import JsonResponse
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.authentication import TokenAuthentication
-from rest_framework.authtoken.models import Token
-from django.views.decorators.csrf import csrf_exempt
-import json
+from django.shortcuts import render, redirect
+from django.contrib.auth import login, authenticate
+from .forms import UserRegisterForm, UserLoginForm
 
 
 User = get_user_model()
@@ -19,7 +18,6 @@ class RegisterView(generics.CreateAPIView):
     serializer_class = UserSerializer
     queryset = User.objects.all()
 
-# logout
 class LogoutView(APIView):
     authentication_classes = [TokenAuthentication]
     permission_classes = [IsAuthenticated]
@@ -31,18 +29,27 @@ class LogoutView(APIView):
         except AttributeError:
             return Response({"detail": "Invalid request. No token found."}, status=status.HTTP_400_BAD_REQUEST)
 
-@csrf_exempt
-def login(request):
+def register(request):
     if request.method == 'POST':
-        body_unicode = request.body.decode('utf-8')
-        body = json.loads(body_unicode)
-        username = body['username']
-        password = body['password']
-        user = authenticate(username=username, password=password)
-        if user:
-            token, _ = Token.objects.get_or_create(user=user)
-            return JsonResponse({"token": token.key}, status=200)
-        else:
-            return JsonResponse({"detail": "Invalid credentials"}, status=400)
+        form = UserRegisterForm(request.POST)
+        if form.is_valid():
+            user = form.save()
+            login(request, user)
+            return redirect('chat:chatbot')  # Replace 'home' with your desired redirect URL
     else:
-        return JsonResponse({"detail": "Invalid request"}, status=400)
+        form = UserRegisterForm()
+    return render(request, 'register.html', {'form': form})
+
+def user_login(request):
+    if request.method == 'POST':
+        form = UserLoginForm(data=request.POST)
+        if form.is_valid():
+            username = form.cleaned_data.get('username')
+            password = form.cleaned_data.get('password')
+            user = authenticate(username=username, password=password)
+            if user is not None:
+                login(request, user)
+                return redirect('chat:chatbot')
+    else:
+        form = UserLoginForm()
+    return render(request, 'login.html', {'form': form})
