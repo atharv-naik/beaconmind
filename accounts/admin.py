@@ -6,6 +6,7 @@ from django.utils.translation import gettext_lazy as _
 
 admin.site.site_header = 'Patient Monitoring Chatbot Admin'
 
+
 class UserAdmin(UserAdmin):
     model = User
     list_display = ["username", "email", "phone", "address", "role"]
@@ -13,13 +14,13 @@ class UserAdmin(UserAdmin):
     fieldsets = (
         (None, {"fields": ("username", "password")}),
         (_("Personal info"), {"fields": (
-            "first_name", 
-            "last_name", 
+            "first_name",
+            "last_name",
             "email",
-            "phone", 
-            "address", 
+            "phone",
+            "address",
             "role",
-            )
+        )
         }),
         (
             _("Permissions"),
@@ -34,6 +35,22 @@ class UserAdmin(UserAdmin):
             },
         ),
         (_("Important dates"), {"fields": ("last_login", "date_joined")}),
+    )
+
+    add_fieldsets = (
+        (None, {
+            "classes": ("wide",),
+            "fields": (
+                "first_name",
+                "last_name",
+                "email",
+                "phone",
+                "address",
+                "role", 
+                "password1", 
+                "password2"
+            ),
+        }),
     )
 
 admin.site.register(User, UserAdmin)
