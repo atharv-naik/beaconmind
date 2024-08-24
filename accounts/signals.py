@@ -24,8 +24,10 @@ def update_user_profile(sender, instance, **kwargs):
         if instance.role != old_instance.role: # role is updated
             if instance.role == 'doctor':
                 Doctor.objects.create(user=instance)
+                Patient.objects.filter(user=instance).delete()
             elif instance.role == 'patient':
                 Patient.objects.create(user=instance)
+                Doctor.objects.filter(user=instance).delete()
             else:
                 Doctor.objects.filter(user=instance).delete()
                 Patient.objects.filter(user=instance).delete()
