@@ -35,7 +35,7 @@ def register(request):
         if form.is_valid():
             user = form.save()
             login(request, user)
-            return redirect('chat:chatbot')  # Replace 'home' with your desired redirect URL
+            return redirect('chat:home')
     else:
         form = UserRegisterForm()
     return render(request, 'register.html', {'form': form})
@@ -49,7 +49,7 @@ def user_login(request):
             user = authenticate(username=username, password=password)
             if user is not None:
                 login(request, user)
-                return redirect('chat:chatbot')
+                return redirect('chat:home')
     else:
         form = UserLoginForm()
     return render(request, 'login.html', {'form': form})

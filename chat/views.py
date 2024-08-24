@@ -31,6 +31,6 @@ def chat(request):
     return Response({'error': 'Invalid request'}, status=400)
 
 @login_required
-def chatbot(request):
+def home(request):
     user = request.user
     return render(request, 'chatbot.html', {'user': user})
