@@ -13,8 +13,10 @@ class ChatMessage(models.Model):
     conversation = models.ForeignKey(Conversation, default=None, on_delete=models.CASCADE)
     user_response = models.TextField(null=True, default='')
     ai_response = models.TextField(null=True, default='')
-    meta_data = models.JSONField(null=True, default=dict)
+    user_response_timestamp = models.DateTimeField(null=True)
+    ai_response_timestamp = models.DateTimeField(null=True)
     timestamp = models.DateTimeField(auto_now_add=True)
+    meta_data = models.JSONField(null=True, default=dict)
 
     def __str__(self):
         return f"{self.conversation}:{self.user_response[:50]}"

@@ -203,14 +203,17 @@
         resize: none;
         outline: none;
       }
-      #user-input::-webkit-scrollbar, .chat-container::-webkit-scrollbar {
+      #user-input::-webkit-scrollbar,
+      .chat-container::-webkit-scrollbar {
         width: 0.6em;
         cursor: pointer;
       }
-      #user-input::-webkit-scrollbar-track, .chat-container::-webkit-scrollbar-track {
+      #user-input::-webkit-scrollbar-track,
+      .chat-container::-webkit-scrollbar-track {
         background-color: #333;
       }
-      #user-input::-webkit-scrollbar-thumb, .chat-container::-webkit-scrollbar-thumb {
+      #user-input::-webkit-scrollbar-thumb,
+      .chat-container::-webkit-scrollbar-thumb {
         background-color: darkgrey;
       }
       #user-input:focus {
@@ -257,7 +260,9 @@
           </svg>
           <span>Chat Interface</span>
         </div>
-        <div class="account-circle" title="{{ user.username }}">{{ user.username|slice:1 }}</div>
+        <div class="account-circle" title="{{ user.username }}">
+          {{ user.username|slice:1 }}
+        </div>
       </div>
 
       <div class="chat-container" id="chat-container">
@@ -342,7 +347,11 @@
       }
 
       function appendMessage(text, sender, timestamp) {
-        const messageWrapperCenter = createMessageElement(text, sender, timestamp);
+        const messageWrapperCenter = createMessageElement(
+          text,
+          sender,
+          timestamp
+        );
         chatContainer.appendChild(messageWrapperCenter);
         chatContainer.scrollTop = chatContainer.scrollHeight;
       }
@@ -399,9 +408,18 @@
           });
           const data = await response.json();
           data.data.forEach((msg) => {
-            const timestamp = new Date(msg.timestamp).toLocaleTimeString();
-            appendMessage(msg.user_response, "user", timestamp);
-            appendMessage(msg.ai_response, "ai", timestamp);
+            const user_timestamp = new Date(
+              msg.user_response_timestamp
+                ? msg.user_response_timestamp
+                : msg.timestamp
+            ).toLocaleTimeString();
+            const ai_timestamp = new Date(
+              msg.ai_response_timestamp
+                ? msg.ai_response_timestamp
+                : msg.timestamp
+            ).toLocaleTimeString();
+            appendMessage(msg.user_response, "user", user_timestamp);
+            appendMessage(msg.ai_response, "ai", ai_timestamp);
           });
         } catch (error) {
           console.error("Failed to fetch chat history:", error);
@@ -425,7 +443,7 @@
             method: "POST",
             headers: {
               "X-CSRFToken": csrftoken,
-              "mode": "same-origin",
+              mode: "same-origin",
               "Content-Type": "application/json",
             },
             body: JSON.stringify({ query: messageText }),

@@ -24,8 +24,9 @@ def chat(request):
     
     elif request.method == 'POST':
         user_response = request.data.get('query')
+        chat_message = chatbot_service.save_user_message(user_response)
         ai_response = chatbot_service.generate_ai_response(user_response)
-        chatbot_service.save_chat_message(user_response, ai_response)
+        chat_message = chatbot_service.save_ai_message(chat_message, ai_response)
         return Response({'ai_response': ai_response.content}, status=201)
     
     return Response({'error': 'Invalid request'}, status=400)
