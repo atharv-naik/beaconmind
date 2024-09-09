@@ -1,8 +1,9 @@
+from django.http import HttpResponse
 from .serializers import ChatMessageSerializer
 from rest_framework.decorators import authentication_classes, permission_classes, api_view
 from rest_framework.authentication import TokenAuthentication, SessionAuthentication
 from rest_framework.permissions import IsAuthenticated
-from django.shortcuts import render
+from django.shortcuts import redirect, render
 from rest_framework.response import Response
 from .services import ConversationService, ChatbotService
 from django.contrib.auth.decorators import login_required
@@ -13,12 +14,13 @@ from django.contrib.auth.decorators import login_required
 @permission_classes([IsAuthenticated])
 def chat(request):
     user = request._user
-    conversation = ConversationService.get_or_create_conversation(user)
-    conversation_id = conversation.id
-    chatbot_service = ChatbotService(conversation_id)
+    conversation, _ = ConversationService.get_or_create_conversation(user)
+    chat_session, _ = ConversationService.get_or_create_chat_session(conversation)
+    chatbot_service = ChatbotService(conversation, chat_session)
 
     if request.method == 'GET':
         chat_obj = chatbot_service.chat_history_service.retrieve_chat_history()
+        chat_obj = chatbot_service.chat_history_service.retrieve_chat_history_from_session()
         chat = ChatMessageSerializer(chat_obj, many=True)
         return Response({'data': chat.data}, status=200)
     
@@ -34,4 +36,8 @@ def chat(request):
 @login_required
 def home(request):
     user = request.user
-    return render(request, 'chatbot.html', {'user': user})
+    if user.role == 'patient':
+        return render(request, 'chatbot.html', {'user': user})
+    elif user.role == 'doctor':
+        return HttpResponse('Doctor Dashboard')
+    return redirect('admin:index')

@@ -11,7 +11,7 @@ User = get_user_model()
 class ChatTests(APITestCase):
 
     def setUp(self):
-        self.client = APIClient()
+        self.client = APIClient(enforce_csrf_checks=True)
         self.user = User.objects.create_user(username='testuser', password='testpassword', role='patient')
         self.token = Token.objects.create(user=self.user)
         self.client.credentials(HTTP_AUTHORIZATION='Token ' + self.token.key)
@@ -19,7 +19,7 @@ class ChatTests(APITestCase):
         self.chat_url = reverse('chat:chat')
 
     def test_chat_post(self):
-        data = {'prompt': 'Hello, how are you?'}
+        data = {'query': 'Hello, how are you?'}
         response = self.client.post(self.chat_url, data, format='json')
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertIn('ai_response', response.data)
