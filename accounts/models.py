@@ -14,7 +14,7 @@ class User(AbstractUser):
     role = models.CharField(max_length=10, choices=ROLE_CHOICES, default='staff')
 
 class Doctor(models.Model):
-    id = ShortUUIDField(primary_key=True)
+    id = ShortUUIDField(primary_key=True, prefix='doc_')
     user = models.OneToOneField(User, on_delete=models.CASCADE)
     department = models.CharField(max_length=100, blank=True, null=True)
 
@@ -22,7 +22,7 @@ class Doctor(models.Model):
         return self.user.username
 
 class Patient(models.Model):
-    id = ShortUUIDField(primary_key=True)
+    id = ShortUUIDField(primary_key=True, prefix='pat_')
     user = models.OneToOneField(User, on_delete=models.CASCADE)
 
     def __str__(self):
