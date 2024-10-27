@@ -11,6 +11,9 @@ https://docs.djangoproject.com/en/5.0/ref/settings/
 """
 
 from pathlib import Path
+from dotenv import load_dotenv
+
+load_dotenv(dotenv_path='.env', override=True)
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -50,7 +53,7 @@ CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOW_PRIVATE_NETWORK = True
 
-CSRF_TRUSTED_ORIGINS = ['https://e496-14-139-220-33.ngrok-free.app']
+CSRF_TRUSTED_ORIGINS = ['http://localhost:3000']
 
 
 MIDDLEWARE = [
@@ -128,7 +131,7 @@ CRISPY_TEMPLATE_PACK = 'bootstrap5'
 # Internationalization
 # https://docs.djangoproject.com/en/5.0/topics/i18n/
 
-LANGUAGE_CODE = 'en-us'
+LANGUAGE_CODE = 'en-in'
 
 TIME_ZONE = 'Asia/Kolkata'
 

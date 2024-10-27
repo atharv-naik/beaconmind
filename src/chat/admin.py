@@ -22,7 +22,7 @@ class ConversationAdmin(admin.ModelAdmin):
 @admin.register(ChatMessage)
 class ChatMessageAdmin(admin.ModelAdmin):
     list_display = ('id', 'conversation', 'chat_session', 'user_response_excerpt',
-                    'ai_response_excerpt', 'user_response_timestamp', 'ai_response_timestamp', 'timestamp')
+                    'ai_response_excerpt', 'timestamp')
     search_fields = ('user_response', 'ai_response',
                      'conversation__user__username')
     readonly_fields = ('id', 'conversation', 'chat_session', 'timestamp')

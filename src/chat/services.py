@@ -1,5 +1,5 @@
 from .models import ChatMessage, Conversation, ChatSession
-from .chains import Chains
+from .chains import ChainStore
 from langchain.memory.chat_message_histories.in_memory import ChatMessageHistory
 from langchain.memory import ConversationBufferMemory
 from langchain_core.runnables.history import RunnableWithMessageHistory
@@ -57,6 +57,33 @@ class ChatHistoryService:
 
         chat_obj = ChatMessage.objects.filter(conversation=self.conversation, chat_session=self.chat_session).order_by('timestamp')
         return chat_obj
+    
+    def chat_filter(self, filters: dict = None) -> QuerySet[ChatMessage]:
+        """
+        Filters chat messages based on the given filters
+
+        The `filters` key-value pairs need to be valid django query parameters
+
+        Example usage:
+        ```
+        chat_filter(
+            filters={
+                "chat_session_id": chat_session_id,
+                "timestamp__gte": timezone.now() - timedelta(hours=1),
+                ...
+                }
+        )
+        ```
+        """
+
+        if 'conversation_id' in filters or 'conversation' in filters:
+            filters.pop('conversation_id', None)
+            filters.pop('conversation', None)
+        # if filters:
+        chat_obj = ChatMessage.objects.filter(conversation_id=self.conversation_id).filter(**filters)
+        # else:
+        #     chat_obj = ChatMessage.objects.filter(conversation_id=self.conversation_id)
+        return chat_obj
 
 
 class ChatbotService:
@@ -69,7 +96,7 @@ class ChatbotService:
 
     def generate_ai_response(self, user_response: str) -> dict:
         runnable_with_message_history = RunnableWithMessageHistory(
-            Chains.default_chain,
+            ChainStore.default_chain,
             self.chat_history_service.get_conversation_history,
             input_messages_key="input",
             history_messages_key="history",

@@ -22,9 +22,12 @@ class ChatMessage(models.Model):
     timestamp = models.DateTimeField(auto_now_add=True)
     meta_data = models.JSONField(null=True, default=dict)
 
+    class Meta:
+        ordering = ['timestamp']
+
     def __str__(self):
         user_response_excerpt = self.user_response[:50] + ('...' if len(self.user_response) > 50 else '')
-        return f"Message in {self.conversation.user.username}'s conversation: '{user_response_excerpt}'"
+        return f"{self.conversation.user.username} message: '{user_response_excerpt}'"
 
 class ChatSession(models.Model):
     id = ShortUUIDField(primary_key=True, prefix='sess_')
@@ -32,4 +35,4 @@ class ChatSession(models.Model):
     timestamp = models.DateTimeField(auto_now_add=True, editable=True)
 
     def __str__(self):
-        return f"Session at {timezone.localtime(self.timestamp).strftime('%Y-%m-%d %H:%M:%S')} for {self.conversation.user.username}"
+        return f"{self.conversation.user.username} - session @ {timezone.localtime(self.timestamp).strftime('%b. %d, %Y, %I:%M %p').lower().capitalize()}"

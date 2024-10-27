@@ -1,7 +1,6 @@
 from .serializers import UserSerializer
 from rest_framework import generics
-from django.contrib.auth import get_user_model
-from django.contrib.auth import authenticate
+from django.contrib.auth import get_user_model, authenticate, logout
 from rest_framework import status
 from rest_framework.response import Response
 from rest_framework.views import APIView
@@ -9,7 +8,9 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.authentication import TokenAuthentication
 from django.shortcuts import render, redirect
 from django.contrib.auth import login, authenticate
-from .forms import UserRegisterForm, UserLoginForm
+from .forms import UserRegisterForm, UserLoginForm, UserRegisterFormStrict
+from .serializers import PasswordResetSerializer
+from django.http import HttpResponseNotAllowed
 
 
 User = get_user_model()
@@ -37,8 +38,12 @@ def register(request):
             login(request, user)
             return redirect('chat:home')
     else:
-        form = UserRegisterForm()
-    return render(request, 'register.html', {'form': form})
+        user = request.user
+        if user.is_authenticated and user.role == 'staff':
+            form = UserRegisterForm()
+        else:
+            form = UserRegisterFormStrict()
+    return render(request, 'accounts/register.html', {'form': form})
 
 def user_login(request):
     if request.method == 'POST':
@@ -52,4 +57,22 @@ def user_login(request):
                 return redirect('chat:home')
     else:
         form = UserLoginForm()
-    return render(request, 'login.html', {'form': form})
+    return render(request, 'accounts/login.html', {'form': form})
+
+def user_logout(request):
+    if request.method == 'POST':
+        logout(request)
+        return redirect('accounts:login')
+    return HttpResponseNotAllowed(['POST'])
+
+class PasswordResetView(APIView):
+    permission_classes = [IsAuthenticated]
+    authentication_classes = [TokenAuthentication]
+
+    def post(self, request):
+        serializer = PasswordResetSerializer(data=request.data, context={'request': request})
+        if serializer.is_valid():
+            request.user.set_password(serializer._validated_data['new_password'])
+            request.user.save()
+            return Response({'detail': 'Password changed successfully.'}, status=status.HTTP_200_OK)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
