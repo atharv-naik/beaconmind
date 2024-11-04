@@ -106,11 +106,29 @@
       }
       .msg-content span {
         white-space: pre-wrap;
+        line-height: 1.5rem;
       }
       .ai-message {
         background-color: inherit;
         color: #ccc;
         justify-content: flex-start;
+      }
+      .error-message {
+        color: #ff0000d1;
+        justify-content: flex-end;
+        display: flex;
+        gap: 10px;
+      }
+      .error-message .retry-btn {
+        color: #ff0000d1;
+        cursor: pointer;
+        font-style: italic;
+      }
+      .clickable {
+        cursor: pointer;
+      }
+      .clickable:hover {
+        text-decoration: underline;
       }
       .input-container {
         padding-top: 10px;
@@ -185,7 +203,7 @@
       }
       .chat-input .textarea-wrapper {
         flex: 1;
-        padding: 18px 20px;
+        padding: 14px 20px;
         border: none;
         border-radius: 30px;
         margin-right: 10px;
@@ -204,6 +222,7 @@
         font-size: inherit;
         resize: none;
         outline: none;
+        line-height: 1.5rem;
       }
       #user-input::-webkit-scrollbar,
       #chat-container::-webkit-scrollbar {
@@ -742,16 +761,26 @@
         metaInfo.textContent = `Session ID: ${session.id}`;
       }
 
-      async function sendMessage() {
-        const messageText = userInput.value.trim();
+      async function sendMessage(retry=false) {
+        console.log(retry);
+        var messageText;
+        if (retry === true) {
+          messageText = localStorage.getItem("lastUserMessage");
+        }
+        else {
+          messageText = userInput.value.trim();
+          localStorage.setItem("lastUserMessage", messageText);
+        }
         if (!messageText) return;
 
-        addDateSeperation();
-
-        appendMessage(messageText, "user", new Date());
-        userInput.value = "";
-
+        if (retry === false) {
+          console.log(retry);
+          addDateSeperation();
+          appendMessage(messageText, "user", new Date());
+          userInput.value = "";
+        }
         const waitingDots = renderWaitingDots();
+
         sendButton.disabled = true;
 
         try {
@@ -764,6 +793,9 @@
             },
             body: JSON.stringify({ query: messageText }),
           });
+          if (!response.ok) {
+            throw new Error(`Server error: ${response.status} ${response.statusText}`);
+          }
           const data = await response.json();
           renderAIMessageFromWaitingDots(
             waitingDots,
@@ -771,10 +803,27 @@
             new Date()
           );
         } catch (error) {
-          console.error("Failed to send message:", error);
+          console.error("Failed to send message:\n", error);
+          showErrorMessage(waitingDots);
         } finally {
           sendButton.disabled = false;
         }
+      }
+
+      function showErrorMessage(waitingDots) {
+        waitingDots.classList.remove("waiting-dots", "ai-message");
+        waitingDots.classList.add("error-message", "user-message");
+        waitingDots.innerHTML = `
+            <span>Something went wrong </span>
+            <span class="retry-btn clickable" onclick="retryPost()">Retry</span>
+        `;
+      }
+
+      function retryPost() {
+        const waitingDots = document.querySelector(".error-message");
+        // remove the div
+        waitingDots.remove();
+        sendMessage(retry=true);
       }
 
       function handleKeyPress(event) {
@@ -791,8 +840,8 @@
         userInput.style.height = "auto";
         userInput.style.height = `${userInput.scrollHeight}px`;
 
-        // Limit the height based on rows (10 rows max)
-        const maxHeight = 10 * 24; // 10 rows * approx. height of a row (24px)
+        // Limit the height based on rows (8 rows max)
+        const maxHeight = 8 * 24; // 8 rows * approx. height of a row (24px)
         if (userInput.scrollHeight > maxHeight) {
           userInput.style.overflowY = "auto";
           userInput.style.height = `${maxHeight}px`;
@@ -801,7 +850,7 @@
         }
       }
 
-      sendButton.addEventListener("click", sendMessage);
+      sendButton.addEventListener("click", () => sendMessage());
       userInput.addEventListener("keypress", handleKeyPress);
       userInput.addEventListener("input", handleInput);
       logoutBtn.addEventListener("click", logout);
