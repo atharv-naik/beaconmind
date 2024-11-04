@@ -28,15 +28,11 @@ def chat(request):
         user_response = request.data.get('query', '')
         if not user_response:
             return Response({'error': 'Invalid request'}, status=400)
-        
-        chat_message = chatbot_service.save_user_message(user_response)
-        ai_response = chatbot_service.generate_ai_response(user_response)
-        if not ai_response:
-            chat_message.delete()
-            return Response({'error': 'Something went wrong'}, status=500)
-        
-        chat_message = chatbot_service.save_ai_message(chat_message, ai_response)
-        return Response({'ai_response': ai_response.content}, status=200)
+        try:
+            response = chatbot_service.invoke_chains(user_response)
+        except Exception as e:
+            return Response({'error': e}, status=500)
+        return Response({'ai_response': response}, status=200)
     
     return Response({'error': 'Invalid request'}, status=400)
 

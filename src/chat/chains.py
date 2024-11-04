@@ -17,6 +17,7 @@ class BaseModel:
     def get_model(self):
         return self.model(**self.kwargs)
 
+
 class Models:
 
     @staticmethod
@@ -37,20 +38,31 @@ class Models:
         }
         return model_map.get(model_name, lambda: None)()
 
+
 class BasePrompt:
 
-    def __init__(self, system_message, human_message="{input}"):
-        self.system_message = system_message
+    def __init__(
+        self,
+        system_init_message,
+        human_message="{input}",
+        system_post_message=None
+    ):
+        self.system_init_message = system_init_message
         self.human_message = human_message
+        self.system_post_message = system_post_message
 
     def create_prompt(self):
-        return ChatPromptTemplate.from_messages(
+        prompt = ChatPromptTemplate.from_messages(
             [
-                ("system", self.system_message),
-                MessagesPlaceholder(variable_name="history"),
+                ("system", self.system_init_message),
+                MessagesPlaceholder(variable_name="history", optional=True),
                 ("human", self.human_message),
             ]
         )
+        if self.system_post_message:
+            prompt.append(("system", self.system_post_message))
+        return prompt
+
 
 class Prompts:
 
@@ -58,11 +70,11 @@ class Prompts:
     def get_prompt(prompt_type, **kwargs):
         prompts_map = {
             "test": lambda: BasePrompt(
-                system_message="You are a helpful virtual assistant.",
+                system_init_message="You are a helpful virtual assistant.",
                 **kwargs
             ),
             "default": lambda: BasePrompt(
-                system_message=(
+                system_init_message=(
                     """
                     You are an empathetic and understanding virtual therapist. You subtly guide conversations and infer key emotional, social, and behavioral patterns from the user's responses without making them feel like they are being assessed.
                     
@@ -80,8 +92,12 @@ class Prompts:
                 **kwargs
             ),
             "assessment": lambda: BasePrompt(
-                system_message=PromptStore.ASSESSMENT_TEST,
-                human_message=(
+                system_init_message=PromptStore.ASSESSMENT,
+                **kwargs
+            ),
+            "assessment.test": lambda: BasePrompt(
+                system_init_message=PromptStore.ASSESSMENT_TEST,
+                system_post_message=(
                     """
                     Transition into questions regarding:
                     Little interest or pleasure in doing things?
@@ -103,40 +119,56 @@ class Prompts:
                     Thoughts of being better off dead or self-harm?
                     Approach this with caution: "Sometimes when people feel really low, they might have thoughts of not wanting to be around. How have you been managing during tough times?" or "If you ever feel overwhelmed, it's important to share. Have you had any particularly difficult thoughts lately?"
 
-                    Continue collecting responses and following up naturally. For each answer, evaluate the response using the scoring guide and output a JSON object for each assessment.
-
-                    Patient >>> {input}
+                    PICK ONE QUESTION AT A TIME. Continue collecting responses and following up naturally. For each answer, evaluate the response using the scoring guide and output a JSON object for each assessment.
                     """
                 ),
                 **kwargs
             ),
+            "phq9.evaluation": lambda: BasePrompt(
+                system_init_message=PromptStore.PHQ9_INIT,
+                system_post_message=PromptStore.EVALUATION,
+                **kwargs
+            ),
+            "phq9.response": lambda: BasePrompt(
+                system_init_message=PromptStore.PHQ9_INIT,
+                system_post_message=PromptStore.RESPONSE,
+                **kwargs
+            ),
         }
         return prompts_map.get(prompt_type, lambda: None)().create_prompt()
+
 
 class OutputParsers:
 
     class ConversationalResponse(BaseModel):
         """Respond in a conversational manner. Be kind and helpful."""
 
-        response: str = Field(description="A conversational response to the user's query")
+        response: str = Field(
+            description="A conversational response to the user's query")
 
     class ResponseSchema(BaseModel):
-        response_for_user: str = Field(description="The response message that should be sent to the patient. Try a follow-up phq-9 question or a supportive message.")
-        phq9_question: str = Field(description="The original PHQ-9 question being evaluated. -1 if the response is not relevant to any question.")
-        score: int = Field(description="The score on a scale of 0-3 based on the patient's response. Score -1 if the response is not relevant to any question.")
-    
+        response_for_user: str = Field(
+            description="The response message that should be sent to the patient. Try a follow-up phq-9 question or a supportive message.")
+        phq9_question: str = Field(
+            description="The original PHQ-9 question being evaluated. -1 if the response is not relevant to any question.")
+        score: int = Field(
+            description="The score on a scale of 0-3 based on the patient's response. Score -1 if the response is not relevant to any question.")
+
     class Response(BaseModel):
-        output: Union["OutputParsers.ResponseSchema", "OutputParsers.ConversationalResponse"]
-    
+        output: Union["OutputParsers.ResponseSchema",
+                      "OutputParsers.ConversationalResponse"]
 
     class PHQ9Assessment(BaseModel):
-        phq9_question: str = Field(..., description="The original PHQ-9 question being evaluated.")
-        score: int = Field(..., ge=0, le=3, description="The score on a scale of 0-3 based on the patient's response.")
+        phq9_question: str = Field(...,
+                                   description="The original PHQ-9 question being evaluated.")
+        score: int = Field(..., ge=0, le=3,
+                           description="The score on a scale of 0-3 based on the patient's response.")
 
     class AssistantResponse(BaseModel):
-        response_for_user: str = Field(..., description="The assistant's response to the patient.")
-        assessment: 'OutputParsers.PHQ9Assessment' = Field(..., description="The PHQ-9 assessment based on the patient's response.")
-
+        response_for_user: str = Field(...,
+                                       description="The assistant's response to the patient.")
+        assessment: 'OutputParsers.PHQ9Assessment' = Field(
+            ..., description="The PHQ-9 assessment based on the patient's response.")
 
     @staticmethod
     def get_output_parser(output_parser, **kwargs):
@@ -147,6 +179,7 @@ class OutputParsers:
             "assistant_response": lambda: JsonOutputParser(pydantic_object=OutputParsers.AssistantResponse, **kwargs),
         }
         return output_parser_map.get(output_parser, lambda: None)()
+
 
 class ChainBuilder:
     """
@@ -171,13 +204,14 @@ class ChainBuilder:
         self.prompt = None
         self.output_parser = None
         self.extra_steps = []
-    
-    def with_model(self, model_name, **kwargs):        
+
+    def with_model(self, model_name, **kwargs):
         self.model = Models.get_model(model_name, **kwargs)
         return self
 
     def with_structured_output(self, schema, include_raw=False, **kwargs):
-        self.model = self.model.with_structured_output(schema=schema, include_raw=include_raw, **kwargs)
+        self.model = self.model.with_structured_output(
+            schema=schema, include_raw=include_raw, **kwargs)
         return self
 
     def with_prompt(self, prompt_type, **kwargs):
@@ -187,7 +221,7 @@ class ChainBuilder:
     def with_output_parser(self, output_parser):
         self.output_parser = output_parser
         return self
-    
+
     def add_step(self, step):
         self.extra_steps.append(step)
         return self
@@ -196,10 +230,12 @@ class ChainBuilder:
         if not self.model or not self.prompt:
             raise ValueError("Model and prompt are required to build a chain.")
         chain = self.prompt | self.model
-        if self.output_parser: chain |= self.output_parser
+        if self.output_parser:
+            chain |= self.output_parser
         for step in self.extra_steps:
             chain = chain | step
         return chain
+
 
 class ChainStore:
     """
@@ -207,10 +243,19 @@ class ChainStore:
     """
 
     test_chain = ChainBuilder().with_model("orca-mini").with_prompt("test").build()
-    default_chain = ChainBuilder().with_model("gpt-4o-mini").with_prompt("default").build()
+    default_chain = ChainBuilder().with_model(
+        "gpt-4o-mini").with_prompt("assessment.test").build()
     assessment_chain = ChainBuilder().with_model("gpt-4o-mini")\
         .with_structured_output(OutputParsers.ResponseSchema, include_raw=True)\
         .with_prompt("assessment")\
+        .build()
+    phq9_evaluation_chain = ChainBuilder()\
+        .with_model("gpt-4o")\
+        .with_prompt("phq9.evaluation")\
+        .build()
+    phq9_response_chain = ChainBuilder()\
+        .with_model("gpt-4o")\
+        .with_prompt("phq9.response")\
         .build()
 
 
