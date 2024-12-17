@@ -91,39 +91,6 @@ class Prompts:
                 ),
                 **kwargs
             ),
-            "assessment": lambda: BasePrompt(
-                system_init_message=PromptStore.ASSESSMENT,
-                **kwargs
-            ),
-            "assessment.test": lambda: BasePrompt(
-                system_init_message=PromptStore.ASSESSMENT_TEST,
-                system_post_message=(
-                    """
-                    Transition into questions regarding:
-                    Little interest or pleasure in doing things?
-                    Ask: "What activities have you enjoyed lately?" or "Have there been any hobbies or interests you've been excited about?"
-                    Feeling down, depressed, or hopeless?
-                    Ask: "How have you been feeling emotionally these days?" or "Have you experienced any moments where you felt particularly low or discouraged?"
-                    Trouble falling/staying asleep, or sleeping too much?
-                    Ask: "How has your sleep been lately? Getting enough rest?" or "Have you noticed any changes in your sleep patterns recently?"
-                    Feeling tired or having little energy?
-                    Ask: "Have you felt more tired than usual?" or "Do you often find yourself lacking energy throughout the day?"
-                    Poor appetite or overeating?
-                    Ask: "How's your appetite been lately? Are you eating as much as you usually do?" or "Have you been enjoying your meals, or noticed any changes in your eating habits?"
-                    Feeling bad about yourself or that you are a failure?
-                    Ask: "How have you been feeling about yourself and your accomplishments?" or "Have there been moments when you've felt down about yourself?"
-                    Trouble concentrating on things, such as reading or watching TV?
-                    Ask: "Do you find it easy to focus on tasks or hobbies?" or "Have you had any trouble concentrating on things you enjoy, like reading or watching shows?"
-                    Moving or speaking so slowly that others notice, or the opposite?
-                    Ask: "Have you noticed any changes in how you move or speak, maybe feeling slower or more restless than usual?"
-                    Thoughts of being better off dead or self-harm?
-                    Approach this with caution: "Sometimes when people feel really low, they might have thoughts of not wanting to be around. How have you been managing during tough times?" or "If you ever feel overwhelmed, it's important to share. Have you had any particularly difficult thoughts lately?"
-
-                    PICK ONE QUESTION AT A TIME. Continue collecting responses and following up naturally. For each answer, evaluate the response using the scoring guide and output a JSON object for each assessment.
-                    """
-                ),
-                **kwargs
-            ),
             "phq9.evaluation": lambda: BasePrompt(
                 system_init_message=PromptStore.PHQ9_INIT,
                 system_post_message=PromptStore.EVALUATION,
@@ -132,6 +99,16 @@ class Prompts:
             "phq9.response": lambda: BasePrompt(
                 system_init_message=PromptStore.PHQ9_INIT,
                 system_post_message=PromptStore.RESPONSE,
+                **kwargs
+            ),
+            "phq9.eval": lambda: BasePrompt(
+                system_init_message=PromptStore.PHQ9_INIT,
+                system_post_message=PromptStore.EVAL,
+                **kwargs
+            ),
+            "phq9.decision": lambda: BasePrompt(
+                system_init_message=PromptStore.PHQ9_INIT,
+                system_post_message=PromptStore.DECISION,
                 **kwargs
             ),
         }
@@ -242,16 +219,12 @@ class ChainStore:
     Predefined chains for convenience
     """
 
-    test_chain = ChainBuilder().with_model("orca-mini").with_prompt("test").build()
-    default_chain = ChainBuilder().with_model(
-        "gpt-4o-mini").with_prompt("assessment.test").build()
-    assessment_chain = ChainBuilder().with_model("gpt-4o-mini")\
-        .with_structured_output(OutputParsers.ResponseSchema, include_raw=True)\
-        .with_prompt("assessment")\
-        .build()
+    # test_chain = ChainBuilder().with_model("orca-mini").with_prompt("test").build()
+    # default_chain = ChainBuilder().with_model(
+    #     "gpt-4o-mini").with_prompt("default").build()
     phq9_evaluation_chain = ChainBuilder()\
         .with_model("gpt-4o")\
-        .with_prompt("phq9.evaluation")\
+        .with_prompt("phq9.eval")\
         .build()
     phq9_response_chain = ChainBuilder()\
         .with_model("gpt-4o")\
@@ -259,5 +232,5 @@ class ChainStore:
         .build()
 
 
-test_chain = ChainStore.test_chain
-default_chain = ChainStore.default_chain
+# test_chain = ChainStore.test_chain
+# default_chain = ChainStore.default_chain

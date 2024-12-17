@@ -18,6 +18,8 @@ class ChatMessage(models.Model):
     user_response = models.TextField(null=True, default='')
     ai_response = models.TextField(null=True, default='')
     user_response_timestamp = models.DateTimeField(null=True)
+    ai_marker = models.JSONField(null=True, default=dict)
+    user_marker = models.JSONField(null=True, default=dict)
     ai_response_timestamp = models.DateTimeField(null=True)
     timestamp = models.DateTimeField(auto_now_add=True)
     meta_data = models.JSONField(null=True, default=dict)

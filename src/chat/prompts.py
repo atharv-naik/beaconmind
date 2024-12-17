@@ -13,7 +13,8 @@ class PromptStore:
                 -  is the first and only message in the conversation yet.
                 - indicates a new conversation:
                     - different topic from previous conversations.
-                    - a large gap in the timestamps can indicate a new conversation.
+                    - a large gap in the timestamps [>1 days]
+                    - greetings, salutations, etc.
                     - etc.
             2. `drifted`(bool): When does the conversation drift? -> It drifts when either or all of the followin is true about patient's latest response:
                 - does not directly or indirectly relate/answer to your last question.
@@ -124,7 +125,7 @@ class PromptStore:
 
     PHQ9_INIT = textwrap.dedent(
         """
-    You are a virtual assisstant and a psychiatrist. You are currently monitoring the following patient's mental health. The patient is being treated by their psychiatrist and your role is to assess the patient's mental health over time based on their responses to the PHQ-9 questionnaire. Your goal is to evaluate the patient's progress which would be monitored by the attending psychiatrist.
+    Please play a role of an empathetic and kind psychiatrist. Your role is to assess the patient's mental health over time based on their responses to the PHQ-9 questionnaire.
 
     PHQ-9 Questions (Henceforth referred to as the `assessment questionaire`):
     1. Little interest or pleasure in doing things?
@@ -137,11 +138,7 @@ class PromptStore:
     8. Moving or speaking so slowly that others notice, or the opposite - being so fidgety or restless that you have been moving around a lot more than usual?
     9. Thoughts of being better off dead or self-harm?
 
-    Each question has a scale from 0 to 3 (`assessment questionaire` scoring guide):
-    0: Not at all
-    1: Several days
-    2: More than half the days
-    3: Nearly every day
+    Each question has a scale from 0 to 3 (`assessment questionaire` scoring guide) -> 0: Not at all, 1: Several days, 2: More than half the days, 3: Nearly every day.
 
     The following is the conversation between you and the patient till now:\n
         """
@@ -149,8 +146,8 @@ class PromptStore:
 
     EVALUATION = textwrap.dedent(
         """
-        Follow the following logical steps to arrive at the final evaluation json object:
-        1. `just_initiated`(bool): Check if the most recent response from the patient is the first and only message in the conversation yet or if it indicates a new conversation (different topic from previous conversations; a large gap in the timestamps can indicate a new conversation among other things). If yes, the `just_initiated` key should be set to `1`. And the rest of the keys should be set to `0` if boolean or `{{}}` if dict and skip the remaining steps (2 and 3).
+        Follow the following sequence of logical steps to arrive at the final evaluation json object:
+        1. `just_initiated`(bool): Check if the most recent response from the patient is the first and only message in the conversation yet OR if it indicates a new conversation (different topic from previous conversations; a large gap in the timestamps can indicate a new conversation among other things). If yes, the `just_initiated` key should be set to `1`. And the rest of the keys should be set to `0` if boolean or `{{}}` if dict and skip the remaining steps (2 and 3).
         2. `drifted`(bool): Proceed if not `just_initiated`. Check if the patient's latest response has drifted from the previous conversation or specifically from your last question. If yes, the `drifted` key should be set to `true`. And the rest of the keys should be set to `false` if boolean or `null` if dict and skip the remaining step (3).
         3. `evaluation`(dict): Proceed if not `just_initiated` and not `drifted`. Evaluate the latest patient response to the last question asked by you based on the `assessment questionaire` scoring guide. [IMPORTANT] Note that the questions you have asked may be paraphrased versions of the original `assessment questionaire` questions; you should understand which question the paraphrased version corresponds to and assign a score based on the patient's response. The `evaluation` key should contain the evaluation object with the following keys:
             - `question`(str): The original `assessment questionaire` question being evaluated.
@@ -184,7 +181,7 @@ class PromptStore:
 
     RESPONSE = textwrap.dedent(
         """
-        The latest patient response was evaluated against your last message (if any). The resulting evaluation object schema is as follows:
+        The latest patient response was interpreted against your last message (if any). The interpretation result object schema is as follows:
         {{
             "just_initiated"(bool): whether the conversation has just initiated (true) or not (false),
             "drifted"(bool): whether the patient's latest response has drifted from the previous conversation (true) or not (false),
@@ -205,13 +202,15 @@ class PromptStore:
             ...
         }}\n
         The following is the updated patient metrics after adding the latest evaluation (above):
-
         patient_metrics={patient_metrics}\n
+
+        The following is the previous decision result that holds the last question asked to the patient:
+        prev_decision_result={prev_decision_result}\n
 
         Based on the above two jsons as context your task is to pick a question (henceforth referred as `q_i` - the i-th question in the `assessment questionaire`, i is the question_id) which is not evaluated yet (i.e. the score is -1 in `patient_metrics`).
         Your task is to prepare a response for the patient by considering the following:
         - If the conversation has just initiated, prepare a response that seeks input to `q_i` from the patient but also considers the context of the conversation. Avoid directly asking `q_i`, instead weave it into a natural conversation.
-        - If the patient's response has drifted, prepare a response that tries to steer the conversation back to original question in `evaluation` dict or to a related question. In this case, `q_i` is the question in the `evaluation` dict.
+        - If the patient's response has drifted, prepare a response that tries to steer the conversation back to the previously asked question in the `prev_decision_result` json (`q_prev`). Weave this into a natural conversation and avoid directly asking `q_prev`.
         - If the patient's response was evaluated, prepare a response that based on the `evaluation` and `patient_metrics` jsons seeks input to `q_i` from the patient but also considers the context of the conversation. Avoid directly asking `q_i`, instead weave it into a natural conversation.
 
         Your response should be in the following format:
@@ -220,5 +219,168 @@ class PromptStore:
             "question_id"(int): "The ID of the question being asked. (the i in `q_i`)",
             "question"(str): "The original `assessment questionaire` question being asked. (the `q_i`)",
         }}\n
+        """
+    ) + Meta.EVALUATION_TERMS_INFO + Meta.IMPORTANT
+
+    EVAL = textwrap.dedent(
+        """
+    Use the following pseudo-code as a reference to understand the interpretation logic. Follow these steps to generate the interpretation result as JSON object.
+        
+    DEFINE FUNCTION evaluate_response(latest_response, previous_response, conversation_context):
+        # Step 1: Check if the conversation is "just_initiated"
+        IF is_first_message(latest_response) OR is_new_conversation(latest_response, conversation_context):
+            RETURN {{
+                "just_initiated": true,
+                "drifted": false,
+                "evaluation": null
+            }}
+
+        # Step 2: Check if the conversation has "drifted"
+        IF has_drifted(latest_response, previous_response, conversation_context):
+            RETURN {{
+                "just_initiated": false,
+                "drifted": true,
+                "evaluation": null
+            }}
+
+        # Step 3: Evaluate the patient's response against last question asked
+        # The decision_result is a JSON holding the last question asked.
+
+        VAR decision_result = {decision_result}
+
+        score = evaluate_against_last_decision(latest_response, decision_result)
+
+        IF score IS NOT NULL:
+            RETURN {{
+                "just_initiated": false,
+                "drifted": false,
+                "evaluation": {{
+                    "question": decision_result.question,
+                    "id": decision_result.question_id,
+                    "score": score
+                }}
+            }}
+
+        # Default fallback (if evaluation fails)
+        RETURN {{
+            "just_initiated": false,
+            "drifted": true,
+            "evaluation": null
+        }}
+
+    # Supporting Helper Functions
+    FUNCTION is_first_message(response):
+        RETURN response IS ONLY message in conversation history
+
+    FUNCTION is_new_conversation(response, conversation_context):
+        RETURN large_time_gap(response.timestamp, conversation_context) [>1 day] OR new_topic_detected(response)
+
+    FUNCTION has_drifted(response, previous_response, conversation_context):
+        RETURN response IS NOT related_to(previous_response.question)
+
+    FUNCTION evaluate_against_questionnaire(response, context):
+        original_question = map_to_original_question(response, context)
+        IF original_question IS NOT NULL:
+            score = calculate_score(response, original_question.scoring_guide)
+            RETURN {{
+                "question": original_question.text,
+                "id": original_question.id,
+                "score": score
+            }}
+        RETURN NULL
+
+    FUNCTION map_to_original_question(response, context):
+        # Map paraphrased question to original assessment questionnaire question
+        RETURN matched_question OR NULL
+
+    FUNCTION calculate_score(response, scoring_guide):
+        RETURN score BASED ON response content and scoring guide
+
+        """
+    ) + Meta.EVALUATION_TERMS_INFO + Meta.IMPORTANT
+
+    DECISION = textwrap.dedent(
+        """
+    Use the following pseudo-code as a reference to understand the decision logic. Follow these steps to generate the decision result as JSON object.
+
+    # Schema definitions for resources
+    DEFINE SCHEMA interpretation_result:
+        {{
+            "just_initiated": BOOLEAN,
+            "drifted": BOOLEAN,
+            "evaluation": {{
+                "question": STRING,
+                "id": INTEGER,
+                "score": INTEGER
+            }} OR NULL
+        }}
+
+    DEFINE SCHEMA patient_metrics:
+        {{
+            INTEGER: INTEGER  # question_id: score (-1 if not evaluated)
+        }}
+    # Output Schema
+    DEFINE SCHEMA decision_result:
+        {{
+            "response_to_user": STRING,
+            "question_id": INTEGER,
+            "question": STRING
+        }}
+    
+    # Resources
+    VAR interpretation_result = {evaluation}
+    VAR patient_metrics = {patient_metrics}
+
+    # Decision Logic
+    DEFINE FUNCTION generate_response(evaluation, patient_metrics, conversation_context):
+        # Step 1: Identify the next unevaluated question (q_i)
+        q_i = find_next_unevaluated_question(patient_metrics)
+
+        # Step 2: Check the conversation state and prepare the response
+        IF evaluation.just_initiated:
+            # Case 1: Conversation has just initiated
+            RETURN {{
+                "response_to_user": generate_initiation_response(q_i, conversation_context),
+                "question_id": q_i.id,
+                "question": q_i.text
+            }}
+        
+        ELSE IF evaluation.drifted:
+            # Case 2: Patient response has drifted
+            IF evaluation.evaluation IS NOT NULL:
+                q_i = evaluation.evaluation  # Steer back to the original question
+            RETURN {{
+                "response_to_user": generate_drift_response(q_i, conversation_context),
+                "question_id": q_i.id,
+                "question": q_i.text
+            }}
+
+        ELSE:
+            # Case 3: Patient response was evaluated
+            RETURN {{
+                "response_to_user": generate_followup_response(q_i, conversation_context),
+                "question_id": q_i.id,
+                "question": q_i.text
+            }}
+
+    # Supporting Helper Functions
+    FUNCTION find_next_unevaluated_question(patient_metrics):
+        FOR question_id, score IN patient_metrics:
+            IF score == -1:
+                RETURN get_question_by_id(question_id)
+        RETURN NULL  # All questions have been evaluated
+
+    FUNCTION generate_initiation_response(q_i, context):
+        RETURN "Weave q_i into a natural conversation considering the conversation context. Avoid directly asking `q_i`."
+
+    FUNCTION generate_drift_response(q_i, context):
+        RETURN "Gently steer the conversation back to q_i, or a related question, using natural language. Avoid directly asking `q_i`, instead weave it into a natural conversation."
+
+    FUNCTION generate_followup_response(q_i, context):
+        RETURN "Based on the evaluated response, naturally ask q_i while maintaining conversation flow. Avoid directly asking `q_i`, instead weave it into a natural conversation."
+
+    FUNCTION get_question_by_id(question_id):
+        RETURN lookup_question_in_assessment_questionnaire(question_id)
+
         """
     ) + Meta.EVALUATION_TERMS_INFO + Meta.IMPORTANT

@@ -39,7 +39,7 @@ class ChatHistoryService:
         ).order_by('-timestamp')
         for msg in conversation_context:
             memory.save_context(
-                {"input": f"{msg.timestamp.strftime('%Y-%m-%d %H:%M')} - {msg.user_response}"},
+                {"input": f"{msg.timestamp.strftime('%Y-%m-%d %H:%M')} -\n {msg.user_response}"},
                 {"output": msg.ai_response}
             )
         retrieved_chat_history = ChatMessageHistory(
@@ -65,7 +65,7 @@ class ChatHistoryService:
         chat_obj = ChatMessage.objects.filter(conversation=self.conversation, chat_session=self.chat_session).order_by('timestamp')
         return chat_obj
     
-    def chat_filter(self, filters: dict = None) -> QuerySet[ChatMessage]:
+    def chat_filter(self, filters: dict = {}) -> QuerySet[ChatMessage]:
         """
         Filters chat messages based on the given filters
 
@@ -88,6 +88,14 @@ class ChatHistoryService:
             filters.pop('conversation', None)
         chat_obj = ChatMessage.objects.filter(conversation_id=self.conversation_id).filter(**filters)
         return chat_obj
+    
+    def get_latest_decision_result(self) -> dict:
+        """
+        Retrieves the latest decision result from the chat history
+        """
+
+        chat_obj = ChatMessage.objects.filter(conversation_id=self.conversation_id).order_by('-timestamp').first()
+        return chat_obj.ai_marker if chat_obj else {}
 
 
 class ChatbotService:
@@ -127,10 +135,15 @@ class ChatbotService:
             input_messages_key="input",
             history_messages_key="history",
         )
+        decision_result = self.chat_history_service.get_latest_decision_result()
         evaluation_response = evaluation_chain.invoke(
-            {"input": formated_user_response},
+            {
+                "input": formated_user_response,
+                "decision_result": decision_result,
+            },
             config={"configurable": {"session_id": self.conversation_id}},
         )
+        print("\n\n", evaluation_response.content, "\n\n")
         evaluation = {}
         try:
             evaluation = json.loads(evaluation_response.content)
@@ -164,10 +177,12 @@ class ChatbotService:
             {
                 "input": formated_user_response,
                 "patient_metrics": json.dumps(patient_metrics),
-                "evaluation": evaluation_response.content
+                "evaluation": evaluation_response.content,
+                "prev_decision_result": decision_result,
             },
             config={"configurable": {"session_id": self.conversation_id}},
         )
+        print("\n\n", ai_response.content, "\n\n")
         response_obj = {}
         try:
             response_obj = json.loads(ai_response.content)
@@ -175,8 +190,8 @@ class ChatbotService:
             print("Error decoding json")
         response_to_user = response_obj.get("response_to_user", "")
         with transaction.atomic():
-            chat_message = self.save_user_message(user_response)
-            self.save_ai_message(chat_message, ai_response, parse=True)
+            chat_message = self.save_user_message(user_response, marker=evaluation)
+            self.save_ai_message(chat_message, ai_response, parse=True, marker=response_obj)
         return response_to_user
 
     def generate_ai_response(self, user_response: str) -> AIMessage:
@@ -210,16 +225,17 @@ class ChatbotService:
         )
         return chat_message
 
-    def save_user_message(self, user_response: str) -> ChatMessage:
+    def save_user_message(self, user_response: str, marker: dict = {}) -> ChatMessage:
         chat_message = ChatMessage.objects.create(
             user_response=user_response,
             conversation=self.conversation,
             chat_session=self.chat_session,
-            user_response_timestamp=timezone.now()
+            user_response_timestamp=timezone.now(),
+            user_marker=marker
         )
         return chat_message
 
-    def save_ai_message(self, chat_message: ChatMessage, ai_response: AIMessage, parse: bool) -> ChatMessage:
+    def save_ai_message(self, chat_message: ChatMessage, ai_response: AIMessage, parse: bool = True, marker: dict = {}) -> ChatMessage:
         if parse:
             try:
                 content = json.loads(ai_response.content)
@@ -229,8 +245,11 @@ class ChatbotService:
         else: chat_message.ai_response = ai_response.content
         chat_message.meta_data = ai_response.response_metadata
         chat_message.ai_response_timestamp = timezone.now()
+
+        marker.pop("response_to_user", None)
+        chat_message.ai_marker = marker
         chat_message.save(
-            update_fields=["ai_response", "meta_data", "ai_response_timestamp"]
+            update_fields=["ai_response", "meta_data", "ai_response_timestamp", "ai_marker"]
         )
         return chat_message
 

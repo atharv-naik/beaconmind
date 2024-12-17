@@ -19,7 +19,8 @@ def chat(request):
     chatbot_service = ChatbotService(conversation, chat_session)
 
     if request.method == 'GET':
-        chat_obj = chatbot_service.chat_history_service.retrieve_chat_history()
+        # chat_obj = chatbot_service.chat_history_service.retrieve_chat_history()
+        chat_obj = chatbot_service.chat_history_service.chat_filter({})
         # chat_obj = chatbot_service.chat_history_service.retrieve_chat_history_from_session()
         chat = ChatMessageSerializer(chat_obj, many=True)
         return Response({'data': chat.data, 'session': {'id': chat_session.id, 'is_new': is_new_session}}, status=200)
