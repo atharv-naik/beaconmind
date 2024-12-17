@@ -89,7 +89,7 @@ class ChatHistoryService:
         chat_obj = ChatMessage.objects.filter(conversation_id=self.conversation_id).filter(**filters)
         return chat_obj
     
-    def get_latest_decision_result(self) -> dict:
+    def get_prev_decision_result(self) -> dict:
         """
         Retrieves the latest decision result from the chat history
         """
@@ -128,25 +128,25 @@ class ChatbotService:
         assert self.patient, "Patient not found"
         formated_user_response = f"{datetime.now().strftime("%Y-%m-%d %H:%M")} - {user_response}"
 
-        # PHQ9 evaluation chain
-        evaluation_chain = RunnableWithMessageHistory(
-            ChainStore.phq9_evaluation_chain,
+        # PHQ9 eval chain
+        eval_chain = RunnableWithMessageHistory(
+            ChainStore.phq9_eval_chain,
             self.chat_history_service.get_conversation_history,
             input_messages_key="input",
             history_messages_key="history",
         )
-        decision_result = self.chat_history_service.get_latest_decision_result()
-        evaluation_response = evaluation_chain.invoke(
+        prev_decision_result = self.chat_history_service.get_prev_decision_result()
+        interpretation_result = eval_chain.invoke(
             {
                 "input": formated_user_response,
-                "decision_result": decision_result,
+                "decision_result": prev_decision_result,
             },
             config={"configurable": {"session_id": self.conversation_id}},
         )
-        print("\n\n", evaluation_response.content, "\n\n")
+        print("\n\n", interpretation_result.content, "\n\n")
         evaluation = {}
         try:
-            evaluation = json.loads(evaluation_response.content)
+            evaluation = json.loads(interpretation_result.content)
         except json.JSONDecodeError:
             print("Error decoding json")
         
@@ -163,37 +163,37 @@ class ChatbotService:
                 score=e["score"]
             )
             if question: question.save()
-
         patient_metrics = self.get_patient_metrics()
         
-        # PHQ9 response chain
-        response_chain = RunnableWithMessageHistory(
-            ChainStore.phq9_response_chain,
+        # PHQ9 decision chain
+        decision_chain = RunnableWithMessageHistory(
+            ChainStore.phq9_decision_chain,
             self.chat_history_service.get_conversation_history,
             input_messages_key="input",
             history_messages_key="history",
         )
-        ai_response = response_chain.invoke(
+        ai_response = decision_chain.invoke(
             {
                 "input": formated_user_response,
                 "patient_metrics": json.dumps(patient_metrics),
-                "evaluation": evaluation_response.content,
-                "prev_decision_result": decision_result,
+                "evaluation": interpretation_result.content,
+                "prev_decision_result": prev_decision_result,
             },
             config={"configurable": {"session_id": self.conversation_id}},
         )
         print("\n\n", ai_response.content, "\n\n")
-        response_obj = {}
+        decision_result = {}
         try:
-            response_obj = json.loads(ai_response.content)
+            decision_result = json.loads(ai_response.content)
         except json.JSONDecodeError:
             print("Error decoding json")
-        response_to_user = response_obj.get("response_to_user", "")
+        response_to_user = decision_result.get("response_to_user", "")
         with transaction.atomic():
             chat_message = self.save_user_message(user_response, marker=evaluation)
-            self.save_ai_message(chat_message, ai_response, parse=True, marker=response_obj)
+            self.save_ai_message(chat_message, ai_response, parse=True, marker=decision_result)
         return response_to_user
 
+    # NOTE depricated
     def generate_ai_response(self, user_response: str) -> AIMessage:
         runnable_with_message_history = RunnableWithMessageHistory(
             ChainStore.default_chain,

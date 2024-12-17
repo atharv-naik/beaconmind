@@ -222,11 +222,11 @@ class ChainStore:
     # test_chain = ChainBuilder().with_model("orca-mini").with_prompt("test").build()
     # default_chain = ChainBuilder().with_model(
     #     "gpt-4o-mini").with_prompt("default").build()
-    phq9_evaluation_chain = ChainBuilder()\
+    phq9_eval_chain = ChainBuilder()\
         .with_model("gpt-4o")\
         .with_prompt("phq9.eval")\
         .build()
-    phq9_response_chain = ChainBuilder()\
+    phq9_decision_chain = ChainBuilder()\
         .with_model("gpt-4o")\
         .with_prompt("phq9.response")\
         .build()
