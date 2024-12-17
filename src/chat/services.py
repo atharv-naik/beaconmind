@@ -143,7 +143,6 @@ class ChatbotService:
             },
             config={"configurable": {"session_id": self.conversation_id}},
         )
-        print("\n\n", interpretation_result.content, "\n\n")
         evaluation = {}
         try:
             evaluation = json.loads(interpretation_result.content)
@@ -181,7 +180,6 @@ class ChatbotService:
             },
             config={"configurable": {"session_id": self.conversation_id}},
         )
-        print("\n\n", ai_response.content, "\n\n")
         decision_result = {}
         try:
             decision_result = json.loads(ai_response.content)
@@ -192,38 +190,6 @@ class ChatbotService:
             chat_message = self.save_user_message(user_response, marker=evaluation)
             self.save_ai_message(chat_message, ai_response, parse=True, marker=decision_result)
         return response_to_user
-
-    # NOTE depricated
-    def generate_ai_response(self, user_response: str) -> AIMessage:
-        runnable_with_message_history = RunnableWithMessageHistory(
-            ChainStore.default_chain,
-            self.chat_history_service.get_conversation_history,
-            input_messages_key="input",
-            history_messages_key="history",
-        )
-        user_response = f"{datetime.now().strftime("%Y-%m-%d %H:%M")} - {user_response}"
-        ai_response = runnable_with_message_history.invoke(
-            {"input": user_response},
-            config={"configurable": {"session_id": self.conversation_id}},
-        )
-        return ai_response
-
-    # NOTE depricated: use save_user_message and save_ai_message instead
-    def save_chat_message(self, user_response: str, ai_response: AIMessage) -> ChatMessage:
-        """
-        NOTE: This method is deprecated. Use save_user_message and save_ai_message instead.
-
-        Saves the full chat message (user + ai response) in the database.
-        Does not account for the timestamp of user response
-        """
-
-        chat_message = ChatMessage.objects.create(
-            user_response=user_response,
-            ai_response=ai_response.content,
-            conversation_id=self.conversation_id,
-            meta_data=ai_response.response_metadata,
-        )
-        return chat_message
 
     def save_user_message(self, user_response: str, marker: dict = {}) -> ChatMessage:
         chat_message = ChatMessage.objects.create(
