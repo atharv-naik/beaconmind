@@ -12,3 +12,4 @@ shortuuid==1.0.13
 django-crispy-forms==2.3
 crispy-bootstrap5==2024.2
 gunicorn==23.0.0
+icecream==2.1.3
