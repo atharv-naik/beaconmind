@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 from django.utils.translation import gettext_lazy as _
-from .models import User, Doctor, Patient, PHQ9Assessment, PHQ9Question, PHQ9Score
+from .models import User, Doctor, Patient, Assessment, AssessmentRecord, AssessmentResult
 
 admin.site.site_header = 'Patient Monitoring Chatbot Admin'
 admin.site.site_title = 'Admin Portal'
@@ -66,25 +66,29 @@ class PatientAdmin(admin.ModelAdmin):
         return obj.user.phone
 
 
-@admin.register(PHQ9Assessment)
-class PHQ9AssessmentAdmin(admin.ModelAdmin):
+@admin.register(Assessment)
+class AssessmentAdmin(admin.ModelAdmin):
     list_display = ['id', 'patient', 'timestamp']
     search_fields = ['patient__user__username', 'patient__user__email']
     readonly_fields = ['id', 'patient', 'timestamp']
     ordering = ['-timestamp']
 
 
-@admin.register(PHQ9Question)
-class PHQ9QuestionAdmin(admin.ModelAdmin):
-    list_display = ['id', 'assessment', 'question_id', 'question_text', 'score', 'timestamp']
-    search_fields = ['assessment__patient__user__username', 'assessment__patient__user__email', 'question_text']
-    readonly_fields = ['id', 'assessment', 'question_id', 'question_text', 'score', 'timestamp']
-    ordering = ['assessment', '-timestamp']
+@admin.register(AssessmentRecord)
+class AssessmentRecordAdmin(admin.ModelAdmin):
+    list_display = ['id', 'assessment', 'question_id',
+                    'question_text', 'score', 'timestamp']
+    search_fields = ['assessment__patient__user__username',
+                     'assessment__patient__user__email', 'question_text']
+    readonly_fields = ['id', 'assessment', 'question_id',
+                       'question_text', 'score', 'timestamp']
+    ordering = ['-timestamp', 'assessment']
 
 
-@admin.register(PHQ9Score)
-class PHQ9ScoreAdmin(admin.ModelAdmin):
+@admin.register(AssessmentResult)
+class AssessmentResultAdmin(admin.ModelAdmin):
     list_display = ['id', 'assessment', 'score', 'timestamp']
-    search_fields = ['assessment__patient__user__username', 'assessment__patient__user__email']
+    search_fields = ['assessment__patient__user__username',
+                     'assessment__patient__user__email']
     readonly_fields = ['id', 'assessment', 'score', 'timestamp']
     ordering = ['assessment', '-timestamp']

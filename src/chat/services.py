@@ -1,6 +1,6 @@
 import json
 
-from accounts.models import PHQ9Assessment, PHQ9Question
+from accounts.models import Assessment, AssessmentRecord
 from .models import ChatMessage, Conversation, ChatSession
 from .chains import ChainStore
 from langchain.memory.chat_message_histories.in_memory import ChatMessageHistory
@@ -18,7 +18,7 @@ class ChatConfig:
 
     LAST_N_CONVERSATIONS = 4
     LAST_N_HRS = 600
-    SESSION_TIMEOUT = 30  # in minutes
+    SESSION_TIMEOUT = 60 * 24  # in minutes
 
 
 class ChatHistoryService:
@@ -28,11 +28,10 @@ class ChatHistoryService:
         self.conversation_id = conversation.id
         self.chat_session = chat_session
 
-    def get_conversation_history(self) -> ChatMessageHistory:
+    def get_chat_history(self) -> ChatMessageHistory:
         """
         Retrieves the full conversation history of user
         """
-
         memory = ConversationBufferMemory(human_prefix="Patient")
         conversation_context = ChatMessage.objects.filter(
             conversation_id=self.conversation_id
@@ -56,7 +55,7 @@ class ChatHistoryService:
         chat_obj = ChatMessage.objects.filter(conversation_id=self.conversation_id).order_by(
             'timestamp').filter(timestamp__gte=time_limit)
         return chat_obj
-    
+
     def retrieve_chat_history_from_session(self) -> QuerySet[ChatMessage]:
         """
         Retrieves chat history of user for the current session
@@ -64,7 +63,7 @@ class ChatHistoryService:
 
         chat_obj = ChatMessage.objects.filter(conversation=self.conversation, chat_session=self.chat_session).order_by('timestamp')
         return chat_obj
-    
+
     def chat_filter(self, filters: dict = {}) -> QuerySet[ChatMessage]:
         """
         Filters chat messages based on the given filters
@@ -88,7 +87,7 @@ class ChatHistoryService:
             filters.pop('conversation', None)
         chat_obj = ChatMessage.objects.filter(conversation_id=self.conversation_id).filter(**filters)
         return chat_obj
-    
+
     def get_prev_decision_result(self) -> dict:
         """
         Retrieves the latest decision result from the chat history
@@ -109,113 +108,139 @@ class ChatbotService:
             self.patient = conversation.user.patient
         except AttributeError:
             self.patient = None
-    
+
     def get_patient_metrics(self) -> dict:
         assert self.patient, "Patient not found"
-        assessment, _ = PHQ9Assessment.objects.get_or_create(patient=self.patient)
+        assessments = Assessment.objects.filter(patient=self.patient, type='phq9')
+        if assessments.exists():
+            assessment = assessments.last()
+        else:
+            assessment = Assessment.objects.create(patient=self.patient, type='phq9')
 
-        phq9_metrics = {}
-        for question_id in range(1, 10):
-            question = PHQ9Question.objects.filter(
+        metrics = {}
+        for q_id in range(1, 10):
+            record = AssessmentRecord.objects.filter(
                 assessment=assessment,
-                question_id=question_id
+                question_id=q_id
             ).order_by('-timestamp').first()
-            phq9_metrics[question_id] = question.score if question else -1
-
-        return phq9_metrics
+            if record:
+                metrics[q_id] = record.score 
+            else:
+                metrics[q_id] = -1
+        return metrics
 
     def invoke_chains(self, user_response: str) -> str:
         assert self.patient, "Patient not found"
         formated_user_response = f"{datetime.now().strftime("%Y-%m-%d %H:%M")} - {user_response}"
-
         # PHQ9 eval chain
         eval_chain = RunnableWithMessageHistory(
             ChainStore.phq9_eval_chain,
-            self.chat_history_service.get_conversation_history,
+            self.chat_history_service.get_chat_history,
             input_messages_key="input",
             history_messages_key="history",
         )
         prev_decision_result = self.chat_history_service.get_prev_decision_result()
-        interpretation_result = eval_chain.invoke(
+        eval_response: AIMessage = eval_chain.invoke(
             {
                 "input": formated_user_response,
+                "patient_metrics": json.dumps(self.get_patient_metrics()),
                 "decision_result": prev_decision_result,
             },
             config={"configurable": {"session_id": self.conversation_id}},
         )
-        evaluation = {}
+        interpretation_result = {}
         try:
-            evaluation = json.loads(interpretation_result.content)
+            interpretation_result = json.loads(eval_response.content)
         except json.JSONDecodeError:
             print("Error decoding json")
-        
+
         # Update patient metrics
-        if evaluation.get("evaluation"):
-            e = evaluation["evaluation"]
-            assert 0 <= e["score"] <= 3, f"Invalid score: {e['score']}"
-            assert 1 <= e["id"] <= 9, f"Invalid question_id: {e['id']}"
-            assessment, _ = PHQ9Assessment.objects.get_or_create(patient=self.patient)
-            question = PHQ9Question.objects.create(
+        if interpretation_result.get("evaluation"):
+            e = interpretation_result["evaluation"]
+            assessments = Assessment.objects.filter(patient=self.patient, type='phq9')
+            if assessments.exists():
+                assessment = assessments.last()
+            else:
+                assessment = Assessment.objects.create(patient=self.patient, type='phq9')
+            record = AssessmentRecord.objects.create(
                 assessment=assessment,
                 question_id=e["id"],
                 question_text=e["question"],
                 score=e["score"]
             )
-            if question: question.save()
-        patient_metrics = self.get_patient_metrics()
+            if record:
+                record.save()
+        metrics = self.get_patient_metrics()
         
         # PHQ9 decision chain
         decision_chain = RunnableWithMessageHistory(
             ChainStore.phq9_decision_chain,
-            self.chat_history_service.get_conversation_history,
+            self.chat_history_service.get_chat_history,
             input_messages_key="input",
             history_messages_key="history",
         )
-        ai_response = decision_chain.invoke(
+        decision_response: AIMessage = decision_chain.invoke(
             {
                 "input": formated_user_response,
-                "patient_metrics": json.dumps(patient_metrics),
-                "evaluation": interpretation_result.content,
+                "patient_metrics": json.dumps(metrics),
+                "evaluation": eval_response.content,
                 "prev_decision_result": prev_decision_result,
             },
             config={"configurable": {"session_id": self.conversation_id}},
         )
         decision_result = {}
         try:
-            decision_result = json.loads(ai_response.content)
+            decision_result = json.loads(decision_response.content)
         except json.JSONDecodeError:
             print("Error decoding json")
         response_to_user = decision_result.get("response_to_user", "")
         with transaction.atomic():
-            chat_message = self.save_user_message(user_response, marker=evaluation)
-            self.save_ai_message(chat_message, ai_response, parse=True, marker=decision_result)
+            msg = self.save_user_message(user_response, marker=interpretation_result)
+            self.save_ai_message(
+                msg,
+                decision_response,
+                parse=True,
+                marker=decision_result
+            )
         return response_to_user
 
     def save_user_message(self, user_response: str, marker: dict = {}) -> ChatMessage:
-        chat_message = ChatMessage.objects.create(
+        msg = ChatMessage.objects.create(
             user_response=user_response,
             conversation=self.conversation,
             chat_session=self.chat_session,
             user_response_timestamp=timezone.now(),
             user_marker=marker
         )
-        return chat_message
+        return msg
 
-    def save_ai_message(self, chat_message: ChatMessage, ai_response: AIMessage, parse: bool = True, marker: dict = {}) -> ChatMessage:
+    def save_ai_message(
+            self,
+            chat_message: ChatMessage,
+            ai_response: AIMessage,
+            parse: bool = True,
+            marker: dict = {}
+        ) -> ChatMessage:
         if parse:
             try:
                 content = json.loads(ai_response.content)
             except json.JSONDecodeError:
                 print("Error decoding json")
             chat_message.ai_response = content.get("response_to_user", "")
-        else: chat_message.ai_response = ai_response.content
+        else:
+            chat_message.ai_response = ai_response.content
         chat_message.meta_data = ai_response.response_metadata
         chat_message.ai_response_timestamp = timezone.now()
 
         marker.pop("response_to_user", None)
         chat_message.ai_marker = marker
         chat_message.save(
-            update_fields=["ai_response", "meta_data", "ai_response_timestamp", "ai_marker"]
+            update_fields=[
+                "ai_response",
+                "meta_data",
+                "ai_response_timestamp", 
+                "ai_marker",
+            ]
         )
         return chat_message
 
@@ -229,8 +254,7 @@ class ConversationService:
 
     @staticmethod
     def get_or_create_chat_session(conversation: Conversation) -> tuple[ChatSession, bool]:
-        last_message = ChatMessage.objects.filter(
-            conversation=conversation).order_by('-timestamp').first()
+        last_message = ChatMessage.objects.filter(conversation=conversation).order_by('-timestamp').first()
         created = False
         if last_message:
             if last_message.user_response_timestamp:

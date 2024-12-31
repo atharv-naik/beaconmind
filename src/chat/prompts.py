@@ -60,6 +60,7 @@ class PromptStore:
         """
         Use the following pseudo-code as a reference to understand the interpretation logic. Follow these steps to generate the interpretation result as JSON object.
         
+        VAR patient_metrics = {patient_metrics}  # Dictionary containing the patient's evaluation scores
         DEFINE FUNCTION evaluate_response(latest_response, previous_response, conversation_context, patient_metrics):
             # Step 1: Check if the conversation is "BEGIN"
             IF is_first_message(latest_response) OR is_new_conversation(latest_response, conversation_context):
@@ -68,17 +69,17 @@ class PromptStore:
                     "evaluation": null
                 }}
 
-            # Step 2: Check if the conversation has "DRIFT"
-            IF has_drifted(latest_response, previous_response, conversation_context):
-                RETURN {{
-                    "chat_status": "DRIFT",
-                    "evaluation": null
-                }}
-
-            # Step 3: Check for "AMBIGUOUS" state
+            # Step 2: Check for "AMBIGUOUS" state
             IF is_ambiguous(latest_response):
                 RETURN {{
                     "chat_status": "AMBIGUOUS",
+                    "evaluation": null
+                }}
+
+            # Step 3: Check if the conversation has "DRIFT"
+            IF has_drifted(latest_response, previous_response, conversation_context):
+                RETURN {{
+                    "chat_status": "DRIFT",
                     "evaluation": null
                 }}
 
@@ -155,7 +156,8 @@ class PromptStore:
 
     DECISION = textwrap.dedent(
         """
-        The latest patient response was interpreted against your last message (if any). The interpretation result object schema is as follows:
+        The latest patient response was interpreted against your last message (if any). 
+        The interpretation result object schema is as follows:
         {{ 
             "chat_status"(str): "The current status of the conversation. Possible values are BEGIN, DRIFT, AMBIGUOUS, NORMAL, or CONCLUDE.",  
             "evaluation"(dict|null): {{  
@@ -163,8 +165,72 @@ class PromptStore:
                 "id"(int): "The ID of the question being evaluated.",  
                 "score"(int): "The score on a scale of 0-3 based on the patient's response."  
             }}
-        }}\n
-        Here, the `evaluation` key tells that you had asked the patient about the question `question` and the patient's response was evaluated to have a score of `score` based on the `assessment questionnaire` scoring guide. The `id` key tells the ID of the question that was evaluated. The `chat_status` key indicates the current conversation state:
+        }}
+
+        Description of `chat_status` values:
+        BEGIN: The conversation has just initiated (no prior evaluation).
+        DRIFT: The patient's response has drifted from the conversation context or question asked.
+        AMBIGUOUS: The patient's response was unclear or not evaluable.
+        NORMAL: The patient's response was evaluated, and the next question can now be asked.
+        CONCLUDE: The assessment is complete (all questions in the patient metrics have been evaluated).
+
+        The `evaluation` key specifies the following:
+        - `question`: The question being evaluated.
+        - `id`: The question's unique identifier.
+        - `score`: The evaluation score based on the patient's response.
+
+        Example JSON containing the interpretation result object:
+        interpretation_result={{evaluation}}
+
+        The `assessment questionnaire` mappings in JSON form are represented as follows:
+        {{ 
+            "question_id"(int): "score"(int, 0-3, -1 if not evaluated),  
+            ...  
+        }} 
+
+        Example updated `patient_metrics` after evaluation:
+        patient_metrics={{patient_metrics}}
+
+        The previous decision result, which contains the last question asked to the patient, is:
+        prev_decision_result={{prev_decision_result}}
+
+        Task:
+        - Select a random question (referred to as `q_i`) from the `assessment questionnaire` that is NOT evaluated yet (score = -1 in `patient_metrics`). Randomize the selection.
+        - Prepare a response for the patient based on the `chat_status` as follows:
+
+        Chat Status Handling:
+        1. **BEGIN**:
+            - Craft a response that naturally introduces `q_i` into the conversation.
+            - Avoid directly asking `q_i`; integrate it into the context.
+
+        2. **DRIFT**:
+            - Gently steer the conversation back to the previously asked question (`q_prev` in `prev_decision_result`).
+            - Weave `q_prev` into the conversation naturally, without directly asking.
+
+        3. **AMBIGUOUS**:
+            - Request clarification on the patient's last response in a friendly and natural way.
+            - Avoid moving to a new question until the response is clarified (focus remains on `q_prev`).
+
+        4. **NORMAL**:
+            - Craft a response that introduces `q_i` naturally based on `interpretation_result` and `patient_metrics`.
+            - Avoid directly asking `q_i`.
+
+        5. **CONCLUDE**:
+            - Acknowledge the completion of the assessment empathetically.
+            - Provide a closing response to the patient.
+
+        Response Format:
+        {{ 
+            "response_to_user"(str): "Your response to the patient here.",  
+            "question_id"(int): "The ID of the question being asked (i.e., `q_i`).",  
+            "question"(str): "The original `assessment questionnaire` question being asked (i.e., `q_i`)."  
+        }}
+        """
+    ) + Meta.CHAT_STATUS_INFO + Meta.IMPORTANT
+
+    EVAL2 = textwrap.dedent(
+        """
+Given the discussion categorize the latest patient response against the last paraphrased question asked (original: {decision_result}) into chat statuses (name it chat_status) as described below:
 
         BEGIN: The conversation has just initiated (no prior evaluation).
         DRIFT: The patient's response has drifted from the conversation context or question asked.
@@ -172,34 +238,22 @@ class PromptStore:
         NORMAL: The patient's response was evaluated, and the next question can now be asked.
         CONCLUDE: The assessment is complete (all questions in the patient metrics have been evaluated).
 
-        The following json contains the interpretation result object for the latest patient response:
-        interpretation_result={evaluation}
+patient_metrics: {patient_metrics} # Dictionary containing the patient's evaluation scores
 
-        The patient metrics on the `assessment questionnaire` i.e. (question_id, score) mappings in json form has a schema as follows:
-        {{
-            "question_id"(int): "score"(int, 0-3, -1 if not evaluated),  
-            ...  
-        }} 
-        The following is the updated patient metrics after adding the latest evaluation (above):
-        patient_metrics={patient_metrics}
+You may include optional key (name it keywords [comma seperated string] should be short) that would hold any noteworthy deductions from the discussion so far if any else null.
 
-        The following is the previous decision result that holds the last question asked to the patient:
-        prev_decision_result={prev_decision_result}
+a key for evaluation (name it evaluation [dict: default null]): in that holds the score key (described below), the original question text key (name it question[str]) and the quistion id key (name it question_id[int]). both question and question_id is given above in the original question dict above.
+score key (name it score [int: default -1]) should hold a score for the latest patient response against the asked question. if not scorable for any reason such as drift or ambiguous etc. default it. 
 
-        Based on the above two jsons as context, your task is to pick any random question (henceforth referred to as `q_i` - the i-th question in the `assessment questionnaire`, i is the question_id) which is NOT evaluated yet (i.e., the score is -1 in `patient_metrics`). Do not pick sequentially; randomize the selection.
-
-        Your task is to prepare a response for the patient by considering the following:
-
-        - If the chat_status is BEGIN, prepare a response that seeks input to `q_i` from the patient but also considers the context of the conversation. Avoid directly asking `q_i`; instead, weave it into a natural conversation.
-        - If the chat_status is DRIFT, prepare a response that gently steers the conversation back to the previously asked question in the `prev_decision_result` json (`q_prev`). Weave this into a natural conversation and avoid directly asking `q_prev`.
-        - If the chat_status is AMBIGUOUS, request clarification on the patient's last response in a friendly way to keep the conversation natural. You should avoid jumping to a new question until the response is clarified. Here the question would remain the previously asked question in the `prev_decision_result` json (`q_prev`).
-        - If the chat_status is NORMAL, prepare a response that seeks input to `q_i` from the patient based on the `interpretation_result` and `patient_metrics` jsons, but weave it naturally into the conversation without directly asking `q_i`.
-        If the chat_status is CONCLUDE, acknowledge the completion of the assessment in a natural, empathetic way and provide a closing response.
-        Your response should be in the following format:
-        {{
-            "response_to_user"(str): "Your response to the patient here.",  
-            "question_id"(int): "The ID of the question being asked. (the i in `q_i`)",  
-            "question"(str): "The original `assessment questionnaire` question being asked. (the `q_i`)",  
-        }} 
+output a single json object.
+example output: {
+  "chat_status": "NORMAL",
+  "keywords": "interest, football, watching",
+  "evaluation": {
+    "score": 0,
+    "question": "Little interest or pleasure in doing things?",
+    "question_id": 1
+  }
+}
         """
-    ) + Meta.CHAT_STATUS_INFO + Meta.IMPORTANT
+    ) + Meta.IMPORTANT + Meta.CHAT_STATUS_INFO

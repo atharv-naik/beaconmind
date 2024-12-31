@@ -28,29 +28,42 @@ class Patient(models.Model):
     def __str__(self):
         return self.user.username
 
-class PHQ9Assessment(models.Model):
+class Assessment(models.Model):
     id = ShortUUIDField(primary_key=True, prefix='assess_')
-    patient = models.OneToOneField(Patient, related_name='phq9_assessment', on_delete=models.CASCADE)
+    patient = models.ForeignKey(Patient, related_name='assessment', on_delete=models.CASCADE)
+    types = (
+        ('phq9', 'PHQ9'),
+        # ('gad7', 'GAD7'), # TODO: Add GAD7
+    )
+    type = models.CharField(max_length=10, choices=types, default='phq9')
     timestamp = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return f"Assessment for {self.patient.user.username}"
 
-class PHQ9Question(models.Model):
+class AssessmentRecord(models.Model):
     id = ShortUUIDField(primary_key=True, prefix='q_')
-    assessment = models.ForeignKey(PHQ9Assessment, related_name='questions', on_delete=models.CASCADE)
-    question_id = models.IntegerField() # Question number (1-9)
+    assessment = models.ForeignKey(Assessment, related_name='questions', on_delete=models.CASCADE)
+    question_id = models.IntegerField()
     question_text = models.CharField(max_length=255, default='')
-    score = models.IntegerField()  # Score from 0-3
+    score = models.IntegerField()
     timestamp = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
         return f"Question #{self.question_id} (score: {self.score}) in {self.assessment}"
 
-class PHQ9Score(models.Model):
+class AssessmentResult(models.Model):
     id = ShortUUIDField(primary_key=True, prefix='score_')
-    assessment = models.ForeignKey(PHQ9Assessment, related_name='scores', on_delete=models.CASCADE)
-    score = models.IntegerField()  # Overall score from 0-27
+    assessment = models.ForeignKey(Assessment, related_name='scores', on_delete=models.CASCADE)
+    score = models.IntegerField()
+    severities = (
+        ('minimal', 'Minimal'),
+        ('mild', 'Mild'),
+        ('moderate', 'Moderate'),
+        ('moderately-severe', 'Moderately Severe'),
+        ('severe', 'Severe'),
+    )
+    severity = models.CharField(max_length=20, choices=severities, default='minimal')
     timestamp = models.DateTimeField(auto_now_add=True)
 
     def __str__(self):
