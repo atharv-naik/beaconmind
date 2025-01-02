@@ -22,7 +22,6 @@ class PromptStore:
                     [IMPORTANT] Discussing personal hardships or similar mental struggles related to the patient's health is NOT considered drifting.
                 - `AMBIGUOUS`: When is the response ambiguous? It is ambiguous when the patient's latest response is unclear or incomplete, making it difficult to assign a score. For example, responses like "hmm..." or "not sure" are ambiguous.
                 - `NORMAL`: When is the conversation status normal? The conversation is considered normal when the patient's response has been successfully evaluated against the last question asked, and the assessment can continue to the next question.
-                - `CONCLUDE`: When does the assessment conclude? It concludes when all questions in the `assessment questionnaire` have been evaluated, and the patient metrics are complete.
 
             2. `evaluation`(dict|null): When does the evaluation happen? Evaluation happens when the `chat_status` is `NORMAL`. The patient's latest response is assessed based on the `assessment questionnaire` scoring guide and the last question asked. 
                 [IMPORTANT] Note that the patient response may not directly answer the question you asked in a simple yes/no format; you should gauge the intensity and frequency of the patient's experiences based on their response and assign a score accordingly.
@@ -89,18 +88,6 @@ class PromptStore:
             score = evaluate_against_last_decision(latest_response, decision_result)
 
             IF score IS NOT NULL:
-                # Step 5: Check if the assessment is complete ("CONCLUDE")
-                IF unevaluated_questions.count() <= 1 AND patient_metrics.unevaluated_question.id == decision_result.question_id:
-                            # CONCLUDE if all questions except current questions are evaluated (as the current question is going to be evaluated now)
-                    RETURN {{
-                        "chat_status": "CONCLUDE",
-                        "evaluation": {{
-                            "question": decision_result.question,
-                            "id": decision_result.question_id,
-                            "score": score
-                        }}
-                    }}
-
                 # Default state: "NORMAL"
                 RETURN {{
                     "chat_status": "NORMAL",
@@ -157,15 +144,6 @@ class PromptStore:
     DECISION = textwrap.dedent(
         """
         The latest patient response was interpreted against your last message (if any). 
-        The interpretation result object schema is as follows:
-        {{ 
-            "chat_status"(str): "The current status of the conversation. Possible values are BEGIN, DRIFT, AMBIGUOUS, NORMAL, or CONCLUDE.",  
-            "evaluation"(dict|null): {{  
-                "question"(str): "The original `assessment questionnaire` question being evaluated.",  
-                "id"(int): "The ID of the question being evaluated.",  
-                "score"(int): "The score on a scale of 0-3 based on the patient's response."  
-            }}
-        }}
 
         Description of `chat_status` values:
         BEGIN: The conversation has just initiated (no prior evaluation).
@@ -174,32 +152,21 @@ class PromptStore:
         NORMAL: The patient's response was evaluated, and the next question can now be asked.
         CONCLUDE: The assessment is complete (all questions in the patient metrics have been evaluated).
 
-        The `evaluation` key specifies the following:
-        - `question`: The question being evaluated.
-        - `id`: The question's unique identifier.
-        - `score`: The evaluation score based on the patient's response.
+        chat_status={evaluation}
 
-        Example JSON containing the interpretation result object:
-        interpretation_result={{evaluation}}
+        Below are a list of unevaluated questions's `q_ids` till now (possibly empty if all evaluated):
+        u_metrics={u_metrics}
 
-        The `assessment questionnaire` mappings in JSON form are represented as follows:
-        {{ 
-            "question_id"(int): "score"(int, 0-3, -1 if not evaluated),  
-            ...  
-        }} 
-
-        Example updated `patient_metrics` after evaluation:
-        patient_metrics={{patient_metrics}}
-
-        The previous decision result, which contains the last question asked to the patient, is:
-        prev_decision_result={{prev_decision_result}}
+        The previous decision result which contains the last question asked to the patient in json format is:
+        prev_decision_result={prev_decision_result}
 
         Task:
-        - Select a random question (referred to as `q_i`) from the `assessment questionnaire` that is NOT evaluated yet (score = -1 in `patient_metrics`). Randomize the selection.
+        - Select a random question (referred to as `q_i`) from the `u_metrics`. `q_i` *MUST* be picked from the `u_metrics` if it is not empty; otherwise, there are no more questions to ask.
         - Prepare a response for the patient based on the `chat_status` as follows:
 
         Chat Status Handling:
         1. **BEGIN**:
+            - Initiate the conversation with a friendly greeting or acknowledgment or introduction. And then say something like "lets start the assessment" or similar.
             - Craft a response that naturally introduces `q_i` into the conversation.
             - Avoid directly asking `q_i`; integrate it into the context.
 
@@ -212,12 +179,13 @@ class PromptStore:
             - Avoid moving to a new question until the response is clarified (focus remains on `q_prev`).
 
         4. **NORMAL**:
-            - Craft a response that introduces `q_i` naturally based on `interpretation_result` and `patient_metrics`.
+            - Craft a response that introduces `q_i` naturally based on `chat_status` and `u_metrics`. [NOTE THAT `q_i` MUST BE FROM `u_metrics` AND NOT PREVIOUSLY EVALUATED.]
             - Avoid directly asking `q_i`.
 
         5. **CONCLUDE**:
             - Acknowledge the completion of the assessment empathetically.
             - Provide a closing response to the patient.
+            - Avoid asking any new questions.
 
         Response Format:
         {{ 
@@ -226,7 +194,7 @@ class PromptStore:
             "question"(str): "The original `assessment questionnaire` question being asked (i.e., `q_i`)."  
         }}
         """
-    ) + Meta.CHAT_STATUS_INFO + Meta.IMPORTANT
+    ) + Meta.IMPORTANT
 
     EVAL2 = textwrap.dedent(
         """

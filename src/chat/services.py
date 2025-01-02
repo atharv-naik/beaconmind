@@ -108,14 +108,20 @@ class ChatbotService:
             self.patient = conversation.user.patient
         except AttributeError:
             self.patient = None
-
-    def get_patient_metrics(self) -> dict:
+    
+    def get_or_create_assessment(self, type: str) -> tuple[Assessment, bool]:
         assert self.patient, "Patient not found"
-        assessments = Assessment.objects.filter(patient=self.patient, type='phq9')
+        assessments = Assessment.objects.filter(patient=self.patient, type=type)
         if assessments.exists():
             assessment = assessments.last()
+            created = False
         else:
-            assessment = Assessment.objects.create(patient=self.patient, type='phq9')
+            assessment = Assessment.objects.create(patient=self.patient, type=type)
+            created = True
+        return assessment, created
+
+    def get_patient_metrics(self) -> dict:
+        assessment, _ = self.get_or_create_assessment('phq9')
 
         metrics = {}
         for q_id in range(1, 10):
@@ -131,7 +137,10 @@ class ChatbotService:
 
     def invoke_chains(self, user_response: str) -> str:
         assert self.patient, "Patient not found"
+
         formated_user_response = f"{datetime.now().strftime("%Y-%m-%d %H:%M")} - {user_response}"
+        prev_decision_result = self.chat_history_service.get_prev_decision_result()
+
         # PHQ9 eval chain
         eval_chain = RunnableWithMessageHistory(
             ChainStore.phq9_eval_chain,
@@ -139,7 +148,6 @@ class ChatbotService:
             input_messages_key="input",
             history_messages_key="history",
         )
-        prev_decision_result = self.chat_history_service.get_prev_decision_result()
         eval_response: AIMessage = eval_chain.invoke(
             {
                 "input": formated_user_response,
@@ -148,20 +156,12 @@ class ChatbotService:
             },
             config={"configurable": {"session_id": self.conversation_id}},
         )
-        interpretation_result = {}
-        try:
-            interpretation_result = json.loads(eval_response.content)
-        except json.JSONDecodeError:
-            print("Error decoding json")
+        interpretation_result = json.loads(eval_response.content)
 
         # Update patient metrics
         if interpretation_result.get("evaluation"):
             e = interpretation_result["evaluation"]
-            assessments = Assessment.objects.filter(patient=self.patient, type='phq9')
-            if assessments.exists():
-                assessment = assessments.last()
-            else:
-                assessment = Assessment.objects.create(patient=self.patient, type='phq9')
+            assessment, _ = self.get_or_create_assessment('phq9')
             record = AssessmentRecord.objects.create(
                 assessment=assessment,
                 question_id=e["id"],
@@ -171,7 +171,10 @@ class ChatbotService:
             if record:
                 record.save()
         metrics = self.get_patient_metrics()
-        
+        if len([v for v in metrics.values() if v != -1]) == 9:
+            interpretation_result["chat_status"] = "CONCLUDE"
+        u_metrics = [k for k, v in metrics.items() if v == -1] # unevaluated metrics
+    
         # PHQ9 decision chain
         decision_chain = RunnableWithMessageHistory(
             ChainStore.phq9_decision_chain,
@@ -182,17 +185,13 @@ class ChatbotService:
         decision_response: AIMessage = decision_chain.invoke(
             {
                 "input": formated_user_response,
-                "patient_metrics": json.dumps(metrics),
-                "evaluation": eval_response.content,
+                "u_metrics": str(u_metrics),
+                "evaluation": json.dumps(interpretation_result),
                 "prev_decision_result": prev_decision_result,
             },
             config={"configurable": {"session_id": self.conversation_id}},
         )
-        decision_result = {}
-        try:
-            decision_result = json.loads(decision_response.content)
-        except json.JSONDecodeError:
-            print("Error decoding json")
+        decision_result = json.loads(decision_response.content)
         response_to_user = decision_result.get("response_to_user", "")
         with transaction.atomic():
             msg = self.save_user_message(user_response, marker=interpretation_result)
@@ -222,10 +221,7 @@ class ChatbotService:
             marker: dict = {}
         ) -> ChatMessage:
         if parse:
-            try:
-                content = json.loads(ai_response.content)
-            except json.JSONDecodeError:
-                print("Error decoding json")
+            content = json.loads(ai_response.content)
             chat_message.ai_response = content.get("response_to_user", "")
         else:
             chat_message.ai_response = ai_response.content
