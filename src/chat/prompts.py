@@ -1,5 +1,6 @@
 import textwrap
 
+
 class PromptStore:
     """
     Store for all the prompts used in the chatbot.
@@ -111,11 +112,12 @@ class PromptStore:
         FUNCTION is_new_conversation(response, conversation_context):
             RETURN large_time_gap(response.timestamp, conversation_context) [>1 day] OR new_topic_detected(response)
 
-        FUNCTION has_drifted(response, previous_response, conversation_context):
-            RETURN response IS NOT related_to(previous_response.question) AND NOT hardship_related(response)
-
         FUNCTION is_ambiguous(response):
             RETURN response.content IS NULL OR response IS unclear ("hmm...", "ok", etc.)
+
+        FUNCTION has_drifted(response, previous_response, conversation_context):
+            // Simple 'yes' or 'no' responses are NOT considered DRIFT; they are AMBIGUOUS
+            RETURN response IS NOT related_to(previous_response.question) AND NOT hardship_related(response)
 
         FUNCTION evaluate_against_last_decision(response, decision_result):
             original_question = map_to_original_question(response, decision_result.context)

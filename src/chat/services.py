@@ -1,17 +1,21 @@
 import json
-
-from accounts.models import Assessment, AssessmentRecord
-from .models import ChatMessage, Conversation, ChatSession
-from .chains import ChainStore
-from langchain.memory.chat_message_histories.in_memory import ChatMessageHistory
-from langchain.memory import ConversationBufferMemory
-from langchain_core.messages.ai import AIMessage
-from langchain_core.runnables.history import RunnableWithMessageHistory
 from datetime import datetime, timedelta
-from django.utils import timezone
-from django.db.models.query import QuerySet
+
 from django.contrib.auth.base_user import AbstractBaseUser
 from django.db import transaction
+from django.db.models.query import QuerySet
+from django.utils import timezone
+from langchain.memory import ConversationBufferMemory
+from langchain.memory.chat_message_histories.in_memory import \
+    ChatMessageHistory
+from langchain_core.messages.ai import AIMessage
+from langchain_core.runnables.history import RunnableWithMessageHistory
+
+from assessments.models import Assessment, AssessmentRecord
+from assessments.definitions import PhaseMap
+
+from .chains import ChainStore
+from .models import ChatMessage, ChatSession, Conversation
 
 
 class ChatConfig:
@@ -104,13 +108,10 @@ class ChatbotService:
         self.conversation_id = conversation.id
         self.chat_session = chat_session
         self.chat_history_service = ChatHistoryService(self.conversation, self.chat_session)
-        try:
-            self.patient = conversation.user.patient
-        except AttributeError:
-            self.patient = None
+        self.patient = conversation.user.patient
+        self.phase = PhaseMap.get(self.patient.phase)
     
     def get_or_create_assessment(self, type: str) -> tuple[Assessment, bool]:
-        assert self.patient, "Patient not found"
         assessments = Assessment.objects.filter(patient=self.patient, type=type)
         if assessments.exists():
             assessment = assessments.last()
@@ -121,10 +122,10 @@ class ChatbotService:
         return assessment, created
 
     def get_patient_metrics(self) -> dict:
-        assessment, _ = self.get_or_create_assessment('phq9')
+        assessment, _ = self.get_or_create_assessment(self.phase.name)
 
         metrics = {}
-        for q_id in range(1, 10):
+        for q_id in range(1, self.phase.N + 1):
             record = AssessmentRecord.objects.filter(
                 assessment=assessment,
                 question_id=q_id
@@ -136,8 +137,6 @@ class ChatbotService:
         return metrics
 
     def invoke_chains(self, user_response: str) -> str:
-        assert self.patient, "Patient not found"
-
         formated_user_response = f"{datetime.now().strftime("%Y-%m-%d %H:%M")} - {user_response}"
         prev_decision_result = self.chat_history_service.get_prev_decision_result()
 
@@ -161,7 +160,7 @@ class ChatbotService:
         # Update patient metrics
         if interpretation_result.get("evaluation"):
             e = interpretation_result["evaluation"]
-            assessment, _ = self.get_or_create_assessment('phq9')
+            assessment, _ = self.get_or_create_assessment(self.phase.name)
             record = AssessmentRecord.objects.create(
                 assessment=assessment,
                 question_id=e["id"],
@@ -171,7 +170,7 @@ class ChatbotService:
             if record:
                 record.save()
         metrics = self.get_patient_metrics()
-        if len([v for v in metrics.values() if v != -1]) == 9:
+        if len([v for v in metrics.values() if v != -1]) == self.phase.N:
             interpretation_result["chat_status"] = "CONCLUDE"
         u_metrics = [k for k, v in metrics.items() if v == -1] # unevaluated metrics
     
@@ -193,6 +192,7 @@ class ChatbotService:
         )
         decision_result = json.loads(decision_response.content)
         response_to_user = decision_result.get("response_to_user", "")
+
         with transaction.atomic():
             msg = self.save_user_message(user_response, marker=interpretation_result)
             self.save_ai_message(
@@ -213,8 +213,8 @@ class ChatbotService:
         )
         return msg
 
+    @staticmethod
     def save_ai_message(
-            self,
             chat_message: ChatMessage,
             ai_response: AIMessage,
             parse: bool = True,

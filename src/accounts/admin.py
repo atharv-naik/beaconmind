@@ -1,7 +1,7 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 from django.utils.translation import gettext_lazy as _
-from .models import User, Doctor, Patient, Assessment, AssessmentRecord, AssessmentResult
+from .models import User, Doctor, Patient
 
 admin.site.site_header = 'Patient Monitoring Chatbot Admin'
 admin.site.site_title = 'Admin Portal'
@@ -39,7 +39,7 @@ class UserAdmin(UserAdmin):
 
 @admin.register(Doctor)
 class DoctorAdmin(admin.ModelAdmin):
-    list_display = ['id', 'user', 'email', 'phone', 'department']
+    list_display = ['user', 'email', 'phone', 'department']
     search_fields = ['user__username', 'user__email', 'department']
     list_filter = ['department']
     readonly_fields = ['id', 'user']
@@ -54,9 +54,9 @@ class DoctorAdmin(admin.ModelAdmin):
 
 @admin.register(Patient)
 class PatientAdmin(admin.ModelAdmin):
-    list_display = ['id', 'user', 'email', 'phone']
+    list_display = ['user', 'email', 'phone']
     search_fields = ['user__username', 'user__email']
-    readonly_fields = ['id', 'user']
+    readonly_fields = ['id', 'user', 'phase']
     ordering = ['user__username']
 
     def email(self, obj):
@@ -64,31 +64,3 @@ class PatientAdmin(admin.ModelAdmin):
 
     def phone(self, obj):
         return obj.user.phone
-
-
-@admin.register(Assessment)
-class AssessmentAdmin(admin.ModelAdmin):
-    list_display = ['id', 'patient', 'timestamp']
-    search_fields = ['patient__user__username', 'patient__user__email']
-    readonly_fields = ['id', 'patient', 'timestamp']
-    ordering = ['-timestamp']
-
-
-@admin.register(AssessmentRecord)
-class AssessmentRecordAdmin(admin.ModelAdmin):
-    list_display = ['id', 'assessment', 'question_id',
-                    'question_text', 'score', 'timestamp']
-    search_fields = ['assessment__patient__user__username',
-                     'assessment__patient__user__email', 'question_text']
-    readonly_fields = ['id', 'assessment', 'question_id',
-                       'question_text', 'score', 'timestamp']
-    ordering = ['-timestamp', 'assessment']
-
-
-@admin.register(AssessmentResult)
-class AssessmentResultAdmin(admin.ModelAdmin):
-    list_display = ['id', 'assessment', 'score', 'timestamp']
-    search_fields = ['assessment__patient__user__username',
-                     'assessment__patient__user__email']
-    readonly_fields = ['id', 'assessment', 'score', 'timestamp']
-    ordering = ['assessment', '-timestamp']

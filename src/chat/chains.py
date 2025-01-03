@@ -1,7 +1,8 @@
-from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
 from langchain_community.chat_models.ollama import ChatOllama
-from langchain_openai.chat_models import ChatOpenAI
 from langchain_core.language_models.chat_models import BaseChatModel
+from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
+from langchain_openai.chat_models import ChatOpenAI
+
 from .prompts import PromptStore
 
 
@@ -11,14 +12,14 @@ class BaseModel:
         self.model = model
         self.kwargs = kwargs
 
-    def get_model(self):
+    def get(self):
         return self.model(**self.kwargs)
 
 
 class Models:
 
     @staticmethod
-    def get_model(model_name, **kwargs) -> BaseChatModel:
+    def get(model_name, **kwargs) -> BaseChatModel:
         model_map = {
             # local models
             "orca-mini": lambda: ChatOllama(model="orca-mini", **kwargs),
@@ -64,7 +65,7 @@ class BasePrompt:
 class Prompts:
 
     @staticmethod
-    def get_prompt(prompt_type, **kwargs):
+    def get(prompt_type, **kwargs):
         prompts_map = {
             "test": lambda: BasePrompt(
                 system_init_message="You are a helpful virtual assistant.",
@@ -107,11 +108,11 @@ class ChainBuilder:
         self.extra_steps = []
 
     def with_model(self, model_name, **kwargs):
-        self.model = Models.get_model(model_name, **kwargs)
+        self.model = Models.get(model_name, **kwargs)
         return self
 
     def with_prompt(self, prompt_type, **kwargs):
-        self.prompt = Prompts.get_prompt(prompt_type, **kwargs)
+        self.prompt = Prompts.get(prompt_type, **kwargs)
         return self
 
     def add_step(self, step):

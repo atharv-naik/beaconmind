@@ -1,10 +1,11 @@
 from django.contrib import admin
-from .models import Conversation, ChatMessage, ChatSession
+
+from .models import ChatMessage, ChatSession, Conversation
 
 
 @admin.register(Conversation)
 class ConversationAdmin(admin.ModelAdmin):
-    list_display = ('id', 'user', 'total_sessions', 'total_messages')
+    list_display = ('user', 'total_sessions', 'total_messages')
     search_fields = ('user__username',)
     readonly_fields = ('id', 'user')
     list_filter = ('user__is_active',)
@@ -21,14 +22,25 @@ class ConversationAdmin(admin.ModelAdmin):
 
 @admin.register(ChatMessage)
 class ChatMessageAdmin(admin.ModelAdmin):
-    list_display = ('id', 'conversation', 'chat_session', 'user_response_excerpt',
+    list_display = ('conversation', 'chat_session', 'user_response_excerpt',
                     'ai_response_excerpt', 'timestamp')
     search_fields = ('user_response', 'ai_response',
                      'conversation__user__username')
-    readonly_fields = ('id', 'conversation', 'chat_session', 'timestamp')
-    list_filter = ('conversation__user__is_active',
+    readonly_fields = ('id', 'conversation', 'chat_session', 'timestamp', 'user_response', 'ai_response',
+                       'user_marker', 'ai_marker', 'user_response_timestamp', 'ai_response_timestamp', 'meta_data')
+    list_filter = ('conversation__user__patient',
                    'timestamp', 'chat_session')
     ordering = ('-timestamp',)
+
+    fieldsets = (
+        (None, {'fields': ('id',)}),
+        ('User Response', {'fields': ('user_response', 'user_marker')}),
+        ('AI Response', {'fields': ('ai_response', 'ai_marker')}),
+        ('Meta Data', {
+            'fields': ('meta_data', 'conversation', 'chat_session', 'user_response_timestamp', 'ai_response_timestamp'),
+            'classes': ('collapse',),
+        }),
+    )
 
     def user_response_excerpt(self, obj):
         u_resp = obj.user_response
@@ -47,7 +59,7 @@ class ChatMessageAdmin(admin.ModelAdmin):
 
 @admin.register(ChatSession)
 class ChatSessionAdmin(admin.ModelAdmin):
-    list_display = ('id', 'conversation', 'total_messages',
+    list_display = ('conversation', 'total_messages',
                     'timestamp', 'session_duration')
     search_fields = ('conversation__user__username',)
     readonly_fields = ('id', 'conversation', 'timestamp')
