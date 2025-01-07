@@ -1,0 +1,348 @@
+{% extends 'dashboard/base.html' %} 
+
+{% block styles %}
+<style>
+  #records-list {
+    padding: 20px;
+    border-radius: 8px;
+    background-color: var(--content-block-bg);
+    border: 1px solid var(--item-shadow);
+    color: var(--text-color);
+    overflow-y: auto;
+    max-height: 100%;
+    height: 100%;
+  }
+
+  #records-list::-webkit-scrollbar {
+    width: 8px;
+  }
+
+  #records-list::-webkit-scrollbar-thumb {
+    background-color: var(--scrollbar-thumb-color);
+    border-radius: 10px;
+  }
+
+  #records-list::-webkit-scrollbar-track {
+    display: none;
+  }
+
+  .item {
+    margin-bottom: 10px;
+  }
+
+  .item:last-child {
+    margin-bottom: 0;
+  }
+</style>
+{% endblock %} {% block header %}
+<div style="display: flex; gap: 5px; align-items: center">
+  <span>
+    <a
+      href="{% url 'dashboard:home' %}"
+      style="display: grid; place-items: center"
+    >
+      <svg
+        xmlns="http://www.w3.org/2000/svg"
+        height="20px"
+        viewBox="0 -960 960 960"
+        width="20px"
+        fill="var(--back-icon-fill)"
+      >
+        <path
+          d="m313-440 224 224-57 56-320-320 320-320 57 56-224 224h487v80H313Z"
+        />
+      </svg>
+    </a>
+  </span>
+  <span>Assessment Details &mdash;</span>
+  <span
+    class="a-type"
+    style="
+      background-color: #ccc;
+      border-radius: 5px;
+      padding: 2px 4px;
+      color: #000;
+    "
+  >
+    <small>{{ assessment.get_type_display }}</small>
+  </span>
+</div>
+{% endblock %} {% block content %}
+<div
+  class="row"
+  style="
+    display: flex;
+    gap: 5px;
+    max-width: 100%;
+    max-height: 100%;
+    margin: 0 auto;
+    padding: 15px 0;
+    height: 100%;
+  "
+>
+  <div
+    class="col-md-6 chart-container"
+    style="flex: 1; max-width: 50%; height: 100%"
+  >
+    <div
+      class="assessment-info"
+      style="
+        background-color: var(--content-block-bg);
+        color: var(--text-color);
+        padding: 20px;
+        border-radius: 8px;
+        border: 1px solid var(--item-shadow);
+        height: 100%;
+      "
+    >
+      <h5 style="margin-bottom: 20px">
+        {{ assessment.patient.user.username }}'s assessment
+      </h5>
+      <div
+        style="
+          margin-bottom: 30px;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          width: 100%;
+        "
+      >
+        <div>
+          <div style="font-size: 15px; margin: 2px 0">
+            Patient: {{ assessment.patient.user.username }}
+          </div>
+          <div style="font-size: 15px; margin: 2px 0">
+            Status: {{ assessment.status }}
+          </div>
+          <div style="font-size: 15px; margin: 2px 0">
+            Severity: {{ assessment.results.severity|default:'--' }}
+          </div>
+        </div>
+        <div
+          style="
+            width: 100px;
+            height: 100px;
+            border-radius: 50%;
+            position: relative;
+          "
+        >
+          <canvas id="scoreCircleCanvas" width="100" height="100"></canvas>
+        </div>
+      </div>
+
+      <div>
+        <canvas
+          id="scoreChart"
+          width="300"
+          height="200"
+          style="max-width: 100%"
+        ></canvas>
+      </div>
+    </div>
+  </div>
+
+  <div
+    class="col-md-6 records-container"
+    style="flex: 1; max-width: 50%; height: 100%"
+  >
+    <div id="records-list" class="records">
+      {% for record in records %}
+      <div
+        class="item"
+        style="
+          background-color: var(--item-bg);
+          padding: 10px;
+          border-radius: 8px;
+        "
+      >
+        <h6
+          style="margin-bottom: 6px; font-size: 15px; color: var(--text-color)"
+        >
+          <i
+            class="material-icons"
+            style="vertical-align: middle; margin-right: 6px; scale: 0.9"
+            >check_circle</i
+          >Q{{ record.question_id }}: {{ record.question_text }}
+        </h6>
+        <div style="display: flex; justify-content: space-between">
+          <p style="margin: 0; font-size: 14px">
+            <strong>Score:</strong> {{ record.score }}
+          </p>
+          <p style="margin: 0; font-size: 12px">
+            <em>{{ record.timestamp|timesince }} ago</em>
+          </p>
+        </div>
+      </div>
+      {% endfor %}
+    </div>
+  </div>
+</div>
+{% endblock %} 
+
+{% block scripts %}
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+      const ele = getComputedStyle(document.documentElement);
+
+      const drawBarChart = () => {
+          const ctxBar = document.getElementById('scoreChart').getContext('2d');
+          const data = {
+              labels: Array.from({ length: {{ scores|length }} }, (_, i) => `Q${i + 1}`),
+              datasets: [{
+                  base: 0,
+                  indexAxis: 'x',
+                  barPercentage: 0.8,
+                  borderRadius: 5,
+                  label: '{{ assessment.get_type_display }} Score',
+                  data: {% autoescape off %}{{ scores|safe }}{% endautoescape %},
+                  backgroundColor: ele.getPropertyValue('--chart-bars-bg'),
+              }]
+          };
+
+          return new Chart(ctxBar, {
+              type: 'bar',
+              data: data,
+              options: {
+                  scales: {
+                      y: {
+                          {% if phase.low == 0 %}
+                          beginAtZero: true,
+                          {% endif %}
+                          max: {{ phase.high }},
+                          ticks: {
+                              stepSize: 1,
+                              callback: function(value) {
+                                  if (Number.isInteger(value)) {
+                                      return value;
+                                  }
+                              },
+                              color: ele.getPropertyValue('--text-color')
+                          },
+                          grid: {
+                              color: ele.getPropertyValue('--chart-grid-color'),
+                          },
+                          border: {
+                              display: false
+                          }
+                      },
+                      x: {
+                          ticks: {
+                              color: ele.getPropertyValue('--text-color')
+                          },
+                          grid: {
+                              display: false,
+                          }
+                      },
+                  },
+                  animation: {
+                      duration: 800,
+                  },
+                  onClick: (event, elements) => {
+                      if (elements.length > 0) {
+                          const chart = elements[0].element;
+                          const datasetIndex = elements[0].datasetIndex;
+                          const dataIndex = elements[0].index
+                          const label = data.labels[dataIndex];
+                          const value = data.datasets[datasetIndex].data[dataIndex];
+
+                          console.log(`Bar clicked: ${label} - ${value}`);
+                      }
+                  },
+                  plugins: {
+                      legend: {
+                          align: 'end',
+                          labels: {
+                              color: ele.getPropertyValue('--text-color')
+                          }
+                      },
+                      title: {
+                          display: true,
+                          text: 'Score Chart',
+                          align: 'start',
+                          font: {
+                              size: 18,
+                              family: 'Arial',
+                          },
+                          color: ele.getPropertyValue('--text-color'),
+                          padding: {
+                              top: 10,
+                              bottom: 10
+                          }
+                      }
+                  }
+              }
+          });
+      };
+
+      const drawCircleChart = () => {
+          const canvas = document.getElementById("scoreCircleCanvas");
+          const ctxCircle = canvas.getContext("2d");
+
+          let score = {{ assessment.results.score|default:curr_score|safe|default:0 }};
+          const maxScore = {{ phase.cap }};
+          canvas.title = `Score: ${score}/${maxScore}`;
+
+          const centerX = canvas.width / 2;
+          const centerY = canvas.height / 2;
+          const radius = 40;
+          const lineWidth = 6;
+
+          const color = ele.getPropertyValue('--chart-bars-bg');
+
+          let currentScore = 0;
+          const animationDuration = 500;
+          const frameRate = 60;
+          const totalFrames = Math.round(animationDuration / (1000 / frameRate));
+          const scoreIncrement = score / totalFrames;
+
+          const animate = () => {
+              ctxCircle.clearRect(0, 0, canvas.width, canvas.height);
+
+              ctxCircle.beginPath();
+              ctxCircle.arc(centerX, centerY, radius, 0, 2 * Math.PI);
+              ctxCircle.lineWidth = lineWidth;
+              ctxCircle.strokeStyle = ele.getPropertyValue('--score-circle-inner-bg');
+              ctxCircle.stroke();
+
+              const arcLength = Math.max(0.1, (currentScore / maxScore) * 2 * Math.PI);
+
+              ctxCircle.beginPath();
+              ctxCircle.arc(centerX, centerY, radius, -Math.PI / 2, -Math.PI / 2 + arcLength);
+              ctxCircle.lineWidth = lineWidth;
+              ctxCircle.strokeStyle = color;
+              ctxCircle.stroke();
+
+              ctxCircle.font = "14px Arial";
+              ctxCircle.fillStyle = ele.getPropertyValue('--text-color-bold');
+              ctxCircle.textAlign = "center";
+              ctxCircle.textBaseline = "middle";
+              {% if assessment.status == 'pending' %}
+              ctxCircle.fillText('Pending', centerX, centerY);
+              {% else %}
+              ctxCircle.fillText(`${Math.round(currentScore)} / ${maxScore}`, centerX, centerY);
+              {% endif %}
+
+              if (currentScore < score) {
+                  currentScore = Math.min(currentScore + scoreIncrement, score);
+                  requestAnimationFrame(animate);
+              }
+          };
+
+          animate();
+      };
+
+
+      let barChart = drawBarChart();
+      drawCircleChart();
+
+      const themeSwitcher = document.querySelector('.theme-switcher');
+      themeSwitcher.addEventListener('click', () => {
+          barChart.destroy();
+          barChart = drawBarChart();
+
+          drawCircleChart();
+      });
+  });
+</script>
+{% endblock %}

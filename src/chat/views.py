@@ -1,12 +1,16 @@
-from django.http import HttpResponse
+from django.shortcuts import render
+from django.contrib.auth.decorators import login_required
 from .serializers import ChatMessageSerializer
 from rest_framework.decorators import authentication_classes, permission_classes, api_view
 from rest_framework.authentication import TokenAuthentication, SessionAuthentication
 from rest_framework.permissions import IsAuthenticated
-from django.shortcuts import redirect, render
 from rest_framework.response import Response
 from .services import ConversationService, ChatbotService
-from django.contrib.auth.decorators import login_required
+
+
+@login_required
+def home(request):
+    return render(request, 'chat/home.html')
 
 
 @api_view(['POST', 'GET'])
@@ -37,14 +41,6 @@ def chat(request):
     
     return Response({'error': 'Invalid request'}, status=400)
 
-@login_required
-def home(request):
-    user = request.user
-    if user.role == 'patient':
-        return render(request, 'chatbot.html', {'user': user})
-    elif user.role == 'doctor':
-        return HttpResponse('Doctor Dashboard')
-    return redirect('admin:index')
 
 @api_view(['GET'])
 def test(request):

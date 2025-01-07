@@ -1,0 +1,238 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Dashboard{% endblock %}</title>
+    <style>
+        :root {
+            --accent-color: rgba(52, 58, 64);
+
+            --sidebar-width: 225px;
+            --bg-color: #f4f6f9;
+            --font-family: Arial, sans-serif;
+            --font-size: 14px;
+            --sidebar-bg: #343a40;
+            --sidebar-text-color: #e8eaed;
+            --sidebar-border: #4f5962;
+            --sidebar-hover-bg: #4f5962;
+            --header-bg: #fff;
+            --header-shadow: rgba(0, 0, 0, 0.1);
+            --content-bg: #fff;
+            --item-bg: #f4f6f9;
+            --item-shadow: rgba(0, 0, 0, 0.1);
+            --item-border-radius: 4px;
+            --content-block-bg: #f4f6f973;
+            --text-color: #555;
+            --back-icon-fill: #555;
+            --chart-bars-bg: rgba(52, 58, 64, 0.8);
+            --chart-grid-color: #ccc;
+            --text-color-bold: #333;
+            --scrollbar-thumb-color: #bbb;
+            --score-circle-inner-bg: #bbb;
+        }
+
+        :root.dark-theme {
+            --accent-color: #D4ADFC;
+
+            --sidebar-width: 225px;
+            --bg-color: #2a2d31;
+            --font-family: Arial, sans-serif;
+            --font-size: 14px;
+            --sidebar-bg: #23272b;
+            --sidebar-text-color: #e8eaed;
+            --sidebar-border: #3a3f45;
+            --sidebar-hover-bg: #2e343a;
+            --header-bg: #2e343a;
+            --header-shadow: rgba(0, 0, 0, 0.5);
+            --content-bg: #2a2d31;
+            --item-bg: #3a3f45;
+            --item-shadow: rgba(255, 255, 255, 0.1);
+            --item-border-radius: 4px;
+            --content-block-bg: #4444444a;
+            --text-color: #ffffff;
+            --back-icon-fill: #cccccc;
+            --chart-bars-bg: #62b6cb;
+            --chart-bars-bg: #D4ADFC;
+            --chart-grid-color: #888;
+            --text-color-bold: #fff;
+            --scrollbar-thumb-color: #888;
+            --score-circle-inner-bg: #555;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: var(--font-family);
+            background-color: var(--bg-color);
+            font-size: var(--font-size);
+        }
+
+        .dashboard-container {
+            display: flex;
+            min-height: 100vh;
+        }
+
+        .sidebar {
+            width: var(--sidebar-width);
+            background-color: var(--sidebar-bg);
+            color: var(--sidebar-text-color);
+            padding: 20px;
+            position: fixed;
+            height: 100%;
+            overflow-y: auto;
+        }
+
+        .sidebar-header {
+            padding: 15px 0;
+            text-align: center;
+            border-bottom: 1px solid var(--sidebar-border);
+        }
+
+        .nav-menu {
+            list-style: none;
+            margin-top: 20px;
+        }
+
+        .nav-item {
+            padding: 12px 15px;
+            margin: 5px 0;
+            border-radius: 6px;
+        }
+
+        .nav-item:hover {
+            background-color: var(--sidebar-hover-bg);
+        }
+
+        ul a, ul a:hover {
+            color: inherit;
+            text-decoration: none;
+        }
+
+        .main-content {
+            flex: 1;
+            margin-left: var(--sidebar-width);
+            background-color: var(--bg-color);
+            display: flex;
+            flex-direction: column;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        .header {
+            background-color: var(--header-bg);
+            padding: 15px 20px;
+            border-bottom: 1px solid var(--header-shadow);
+            flex-shrink: 0;
+            color: var(--text-color);
+        }
+
+        .content {
+            background-color: var(--content-bg);
+            flex: 1;
+            overflow-y: auto;
+        }
+
+        .item {
+            background-color: var(--item-bg);
+            padding: 20px;
+            border-radius: var(--item-border-radius);
+            border: 1px solid var(--item-shadow);
+        }
+
+        .theme-switcher {
+            position: absolute;
+            top: 15px;
+            right: 20px;
+            cursor: pointer;
+        }
+    </style>
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    {% block styles %}{% endblock %}
+    {% block links %}{% endblock %}
+</head>
+<body>
+    <div class="dashboard-container">
+        <div class="sidebar">
+            <a href="{% url 'dashboard:home' %}" style="color: var(--sidebar-text-color); text-decoration: none;">
+                <div class="sidebar-header">
+                    <div style="display: flex; align-items: center; gap: 10px;">
+                        <div style="display: grid; place-items: center;">
+                            <svg xmlns="http://www.w3.org/2000/svg" height="32px" viewBox="0 -960 960 960" width="32px" fill="var(--sidebar-text-color)"><path d="M520-600v-240h320v240H520ZM120-440v-400h320v400H120Zm400 320v-400h320v400H520Zm-400 0v-240h320v240H120Zm80-400h160v-240H200v240Zm400 320h160v-240H600v240Zm0-480h160v-80H600v80ZM200-200h160v-80H200v80Zm160-320Zm240-160Zm0 240ZM360-280Z"/></svg>
+                        </div>
+                        <span style="font-size: 26px;">Dashboard</span>
+                    </div>
+                </div>
+            </a>
+            <ul class="nav-menu">
+                <a href="{% url 'dashboard:home' %}">
+                    <li class="nav-item">
+                        <i class="material-icons" style="float: left; margin-right: 5px;">home</i>
+                        Home
+                    </li>
+                </a>
+                <a href="#">
+                    <li class="nav-item">
+                        <i class="material-icons" style="float: left; margin-right: 5px;">assignment</i>
+                        Assessments
+                    </li>
+                </a>
+                <a href="{% url 'admin:index' %}">
+                    <li class="nav-item">
+                        <i class="material-icons" style="float: left; margin-right: 5px;">admin_panel_settings</i>
+                        Admin
+                    </li>
+                </a>
+                <li class="nav-item">
+                    <form method="POST" action="{% url 'accounts:logout' %}" style="display: inline;">
+                        {% csrf_token %}
+                        <button type="submit" class="btn btn-link nav-link" style="padding: 0; color: inherit; text-decoration: none; width:100%;text-align:left;">
+                            <i class="material-icons" style="float: left; margin-right: 5px;">logout</i>
+                            Logout
+                        </button>
+                    </form>
+                </li>                
+            </ul>
+        </div>
+        <div class="main-content">
+            <div class="header">
+                <div class="theme-switcher" onclick="toggleTheme()">
+                    <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="var(--text-color)"><path d="M480-80q-83 0-156-31.5T197-197q-54-54-85.5-127T80-480q0-83 31.5-156T197-763q54-54 127-85.5T480-880q83 0 156 31.5T763-763q54 54 85.5 127T880-480q0 83-31.5 156T763-197q-54 54-127 85.5T480-80Zm40-83q119-15 199.5-104.5T800-480q0-123-80.5-212.5T520-797v634Z"/></svg>
+                </div>
+                <div>{% block header %}{% endblock %}</div>
+            </div>
+            <div class="content">
+                {% block content %}
+                {% endblock %}
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const themeKey = 'dashboard-theme';
+        const toggleTheme = () => {
+            const root = document.documentElement;
+            if (root.classList.contains('dark-theme')) {
+                root.classList.remove('dark-theme');
+                localStorage.setItem(themeKey, 'light');
+            } else {
+                root.classList.add('dark-theme');
+                localStorage.setItem(themeKey, 'dark');
+            }
+        };
+
+        (function() {
+            const savedTheme = localStorage.getItem(themeKey);
+            if (savedTheme === 'dark') {
+                document.documentElement.classList.add('dark-theme');
+            }
+        })();
+    </script>
+    {% block scripts %}{% endblock %}
+</body>
+</html>

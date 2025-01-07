@@ -48,13 +48,14 @@ INSTALLED_APPS = [
     'accounts',
     'assessments',
     'chat',
+    'dashboard',
 ]
 
 CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOW_PRIVATE_NETWORK = True
 
-CSRF_TRUSTED_ORIGINS = ['http://localhost:3000']
+CSRF_TRUSTED_ORIGINS = ['http://localhost:3000', 'https://*.ngrok-free.app']
 
 
 MIDDLEWARE = [
