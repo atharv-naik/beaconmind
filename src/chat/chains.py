@@ -84,6 +84,7 @@ class Prompts:
         }
         return prompts_map.get(prompt_type, lambda: None)().create_prompt()
 
+
 class ChainBuilder:
     """
     Builder class to create a chain of models, prompts, and output parsers
@@ -94,7 +95,6 @@ class ChainBuilder:
         ChainBuilder()
         .with_model("gpt-4o")
         .with_prompt("default")
-        .with_output_parser(my_custom_output_parser)
         .add_step(my_custom_step)
         .build()
     )
@@ -104,7 +104,6 @@ class ChainBuilder:
     def __init__(self):
         self.model = None
         self.prompt = None
-        self.output_parser = None
         self.extra_steps = []
 
     def with_model(self, model_name, **kwargs):
@@ -123,8 +122,6 @@ class ChainBuilder:
         if not self.model or not self.prompt:
             raise ValueError("Model and prompt are required to build a chain.")
         chain = self.prompt | self.model
-        if self.output_parser:
-            chain |= self.output_parser
         for step in self.extra_steps:
             chain = chain | step
         return chain
@@ -143,4 +140,3 @@ class ChainStore:
         .with_model("gpt-4o")\
         .with_prompt("phq9.decision")\
         .build()
-

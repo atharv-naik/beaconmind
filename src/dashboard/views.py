@@ -31,5 +31,6 @@ def assessment(request, assessment_id):
         'records': records,
         'scores': scores,
         'curr_score': curr_score,
-        'result': result
+        'result': result,
+        'phase': phase,
     })

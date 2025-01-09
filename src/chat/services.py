@@ -122,7 +122,7 @@ class ChatbotService:
         return assessment, created
 
     def get_patient_metrics(self) -> dict:
-        assessment, _ = self.get_or_create_assessment(self.phase.verbose_name)
+        assessment, _ = self.get_or_create_assessment(self.phase.name)
 
         metrics = {}
         for q_id in range(1, self.phase.N + 1):
@@ -160,7 +160,7 @@ class ChatbotService:
         # Update patient metrics
         if interpretation_result.get("evaluation"):
             e = interpretation_result["evaluation"]
-            assessment, _ = self.get_or_create_assessment(self.phase.verbose_name)
+            assessment, _ = self.get_or_create_assessment(self.phase.name)
             record = AssessmentRecord.objects.create(
                 assessment=assessment,
                 question_id=e["id"],

@@ -2,12 +2,12 @@ from django.db import models
 from shortuuid.django_fields import ShortUUIDField
 
 from accounts.models import Patient
-from assessments.definitions import PHQ9Phase, PhaseMap
+from assessments.definitions import PHQ9Phase
 
 
 class Assessment(models.Model):
     types = (
-        (PHQ9Phase().verbose_name, 'PHQ9'),
+        (PHQ9Phase().name, PHQ9Phase().verbose_name),
         # ('gad7', 'GAD7'), # TODO: Add GAD7
     )
     status = (
@@ -16,7 +16,7 @@ class Assessment(models.Model):
     )
     id = ShortUUIDField(primary_key=True, prefix='assess_')
     patient = models.ForeignKey(Patient, related_name='assessments', on_delete=models.CASCADE)
-    type = models.CharField(max_length=30, choices=types, default=PHQ9Phase().verbose_name)
+    type = models.CharField(max_length=30, choices=types, default=PHQ9Phase().name)
     status = models.CharField(max_length=10, choices=status, default='pending')
     timestamp = models.DateTimeField(auto_now_add=True)
 
