@@ -6,16 +6,6 @@ from langchain_openai.chat_models import ChatOpenAI
 from .prompts import PromptStore
 
 
-class BaseModel:
-
-    def __init__(self, model, **kwargs):
-        self.model = model
-        self.kwargs = kwargs
-
-    def get(self):
-        return self.model(**self.kwargs)
-
-
 class Models:
 
     @staticmethod
@@ -49,7 +39,7 @@ class BasePrompt:
         self.human_message = human_message
         self.system_post_message = system_post_message
 
-    def create_prompt(self):
+    def create_prompt(self) -> ChatPromptTemplate:
         prompt = ChatPromptTemplate.from_messages(
             [
                 ("system", self.system_init_message),
@@ -65,7 +55,7 @@ class BasePrompt:
 class Prompts:
 
     @staticmethod
-    def get(prompt_type, **kwargs):
+    def get(prompt_type, **kwargs) -> ChatPromptTemplate:
         prompts_map = {
             "test": lambda: BasePrompt(
                 system_init_message="You are a helpful virtual assistant.",
@@ -132,11 +122,21 @@ class ChainStore:
     Predefined chains for convenience
     """
 
-    phq9_eval_chain = ChainBuilder()\
-        .with_model("gpt-4o")\
-        .with_prompt("phq9.eval")\
+    phq9_eval_chain = (
+        ChainBuilder()
+        .with_model("gpt-4o")
+        .with_prompt("phq9.eval")
         .build()
-    phq9_decision_chain = ChainBuilder()\
-        .with_model("gpt-4o")\
-        .with_prompt("phq9.decision")\
+    )
+    phq9_decision_chain = (
+        ChainBuilder()
+        .with_model("gpt-4o")
+        .with_prompt("phq9.decision")
         .build()
+    )
+    
+    @staticmethod
+    def get(phase, mode):
+        if not hasattr(ChainStore, f"{phase}_{mode}_chain"):
+            raise ValueError(f"Chain not found: {phase}_{mode}_chain")
+        return getattr(ChainStore, f"{phase}_{mode}_chain")

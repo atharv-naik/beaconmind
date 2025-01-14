@@ -18,6 +18,12 @@ class BaseAssessmentPhase(ABC):
 
     @property
     @abstractmethod
+    def short_name(self) -> str:
+        """Short system name of the assessment."""
+        pass
+
+    @property
+    @abstractmethod
     def verbose_name(self) -> str:
         """
         Verbose/display name of the assessment
@@ -85,6 +91,10 @@ class PHQ9Phase(BaseAssessmentPhase):
     @property
     def name(self) -> str:
         return "assessment.phq9"
+    
+    @property
+    def short_name(self) -> str:
+        return self.name.split(".")[-1]
 
     @property
     def verbose_name(self) -> str:
@@ -180,6 +190,7 @@ if __name__ == "__main__":
     phase = PHQ9Phase()
     print(phase)
     print(phase.name)
+    print(phase.short_name)
     print(phase.verbose_name)
     print(phase.questions)
     print(phase.N)

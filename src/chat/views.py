@@ -23,9 +23,9 @@ def chat(request):
     chatbot_service = ChatbotService(conversation, chat_session)
 
     if request.method == 'GET':
-        # chat_obj = chatbot_service.chat_history_service.retrieve_chat_history()
-        # chat_obj = chatbot_service.chat_history_service.chat_filter({})
-        chat_obj = chatbot_service.chat_history_service.retrieve_chat_history_from_session()
+        chat_obj = chatbot_service.chat_history_service.get_recent()
+        # chat_obj = chatbot_service.chat_history_service.filter_by({})
+        # chat_obj = chatbot_service.chat_history_service.get_from_session()
         chat = ChatMessageSerializer(chat_obj, many=True)
         return Response({'data': chat.data, 'session': {'id': chat_session.id, 'is_new': is_new_session}}, status=200)
     
@@ -34,7 +34,7 @@ def chat(request):
         if not user_response:
             return Response({'error': 'Invalid request'}, status=400)
         try:
-            response = chatbot_service.invoke_chains(user_response)
+            response = chatbot_service.trigger_pipeline(user_response)
         except Exception as e:
             return Response({'error': e}, status=500)
         return Response({'ai_response': response}, status=200)
