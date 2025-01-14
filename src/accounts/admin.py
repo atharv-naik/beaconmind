@@ -42,7 +42,6 @@ class DoctorAdmin(admin.ModelAdmin):
     list_display = ['user', 'email', 'phone', 'department']
     search_fields = ['user__username', 'user__email', 'department']
     list_filter = ['department']
-    readonly_fields = ['id', 'user']
     ordering = ['user__username']
 
     def email(self, obj):
@@ -56,7 +55,6 @@ class DoctorAdmin(admin.ModelAdmin):
 class PatientAdmin(admin.ModelAdmin):
     list_display = ['user', 'email', 'phone']
     search_fields = ['user__username', 'user__email']
-    readonly_fields = ['id', 'user', 'phase']
     ordering = ['user__username']
 
     def email(self, obj):

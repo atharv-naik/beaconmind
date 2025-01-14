@@ -8,7 +8,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.authentication import TokenAuthentication
 from django.shortcuts import render, redirect
 from django.contrib.auth import login, authenticate
-from .forms import UserRegisterForm, UserLoginForm, UserRegisterFormStrict
+from .forms import UserRegisterForm, UserLoginForm, PatientRegisterForm
 from .serializers import PasswordResetSerializer
 from django.http import HttpResponseNotAllowed
 
@@ -45,7 +45,7 @@ def register(request):
         if user.is_authenticated and user.role == 'staff':
             form = UserRegisterForm()
         else:
-            form = UserRegisterFormStrict()
+            form = PatientRegisterForm()
     return render(request, 'accounts/register.html', {'form': form})
 
 
