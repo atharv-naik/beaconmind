@@ -2,18 +2,21 @@ from django.shortcuts import render, get_object_or_404
 
 from assessments.models import Assessment
 from assessments.definitions import PhaseMap
+from accounts.decorators import allow_only
 
 
+@allow_only(['doctor'])
 def home(request):
     assessments = Assessment.objects.all()
     return render(request, 'dashboard/home.html', {'assessments': assessments})
 
 
+@allow_only(['doctor'])
 def assessment(request, assessment_id):
     assessment = get_object_or_404(Assessment, id=assessment_id)
     records = assessment.records.all().order_by('question_id')
     result = assessment.results.first()
-    
+
     scores = []
     phase = PhaseMap.get(assessment.type)
     idx = 0
