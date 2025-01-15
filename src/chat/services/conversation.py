@@ -1,0 +1,140 @@
+from datetime import timedelta
+from typing import Union
+
+from django.contrib.auth.base_user import AbstractBaseUser
+from django.db.models.query import QuerySet
+from django.utils import timezone
+from langchain.memory import ConversationBufferMemory
+from langchain.memory.chat_message_histories.in_memory import \
+    ChatMessageHistory
+
+from ..models import ChatMessage, ChatSession, Conversation
+from .config import ChatSettings
+
+
+class HistoryManager:
+
+    def __init__(self, conversation: Conversation, chat_session: ChatSession = None):
+        self.conversation = conversation
+        self.conversation_id = conversation.id
+        self.chat_session = chat_session
+
+    def get_full(self) -> ChatMessageHistory:
+        """
+        Retrieves full chat history of user in `ChatMessageHistory` format
+        """
+        memory = ConversationBufferMemory(human_prefix="Patient")
+        messages = ChatMessage.objects.filter(
+            conversation_id=self.conversation_id
+        ).order_by('-timestamp')
+        for msg in messages:
+            memory.save_context(
+                {"input": ConversationManager.format_msg(msg)},
+                {"output": msg.ai_response}
+            )
+        retrieved_chat_history = ChatMessageHistory(
+            messages=memory.chat_memory.messages
+        )
+        return retrieved_chat_history
+
+    def get_recent(self, N: int = ChatSettings.LAST_N_HRS) -> QuerySet[ChatMessage]:
+        """
+        Retrieves chat messages of user from the last N hours
+        """
+
+        time_limit = timezone.now() - timedelta(hours=N)
+        chat_obj = ChatMessage.objects.filter(conversation_id=self.conversation_id).order_by(
+            'timestamp').filter(timestamp__gte=time_limit)
+        return chat_obj
+
+    def get_from_session(self) -> QuerySet[ChatMessage]:
+        """
+        Retrieves chat messages of user from the current chat session
+        """
+
+        chat_obj = ChatMessage.objects.filter(
+            conversation=self.conversation, chat_session=self.chat_session).order_by('timestamp')
+        return chat_obj
+
+    def filter_by(self, filters: dict = {}) -> QuerySet[ChatMessage]:
+        """
+        Filters chat messages based on the given filters
+
+        The `filters` key-value pairs need to be valid django query parameters
+
+        Example usage:
+        ```
+        filter_by(
+            filters={
+                "chat_session_id": chat_session_id,
+                "timestamp__gte": timezone.now() - timedelta(hours=1), # last 1 hour
+                ...
+                }
+        )
+        ```
+        """
+
+        if 'conversation_id' in filters or 'conversation' in filters:
+            filters.pop('conversation_id', None)
+            filters.pop('conversation', None)
+        chat_obj = ChatMessage.objects.filter(
+            conversation_id=self.conversation_id).filter(**filters)
+        return chat_obj
+
+    def get_last_decision(self) -> dict:
+        """
+        Retrieves the latest decision result from the chat history.
+        """
+        chat_obj = (
+            ChatMessage.objects.filter(conversation_id=self.conversation_id)
+            .values('ai_marker')
+            .order_by('-timestamp')
+            .first()
+        )
+        return chat_obj["ai_marker"] if chat_obj else {}
+
+
+class ConversationManager:
+
+    @staticmethod
+    def format_msg(msg: Union[str, ChatMessage]) -> str:
+        if isinstance(msg, ChatMessage):
+            return f"{timezone.localtime(msg.timestamp).strftime("%-d %b %Y %-I:%M%p").lower()} -\n {msg.user_response}"
+        return f"{timezone.localtime(timezone.now()).strftime("%-d %b %Y %-I:%M%p").lower()} -\n {msg}"
+
+    @staticmethod
+    def get_or_create_conversation(user: AbstractBaseUser) -> tuple[Conversation, bool]:
+        conversation, created = Conversation.objects.get_or_create(user=user)
+        return conversation, created
+
+    @staticmethod
+    def get_or_create_chat_session(conversation: Conversation) -> tuple[ChatSession, bool]:
+        last_message = ChatMessage.objects.filter(
+            conversation=conversation).order_by('-timestamp').first()
+        created = False
+        if last_message:
+            if last_message.user_response_timestamp:
+                time_inactive = timezone.now() - last_message.user_response_timestamp
+            else:
+                time_inactive = timezone.now() - last_message.timestamp
+            if time_inactive.total_seconds() / 60 > ChatSettings.SESSION_TIMEOUT:
+                # check if there is an existing valid session
+                last_session = ChatSession.objects.filter(
+                    conversation=conversation).order_by('-timestamp').first()
+                if last_session and last_session.timestamp > last_message.timestamp:
+                    chat_session = last_session
+                    chat_session.timestamp = timezone.now()
+                    chat_session.save(update_fields=['timestamp'])
+                else:
+                    chat_session = ChatSession.objects.create(
+                        conversation=conversation)
+                    created = True
+            else:
+                chat_session = last_message.chat_session
+        else:
+            chat_session, created = ChatSession.objects.get_or_create(
+                conversation=conversation)
+            if created:
+                chat_session.timestamp = timezone.now()
+                chat_session.save(update_fields=['timestamp'])
+        return chat_session, created

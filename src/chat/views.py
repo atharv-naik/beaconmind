@@ -5,7 +5,8 @@ from rest_framework.decorators import authentication_classes, permission_classes
 from rest_framework.authentication import TokenAuthentication, SessionAuthentication
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
-from .services import ConversationService, ChatbotService
+from .services.conversation import ConversationManager
+from .services.session import SessionPipeline
 
 
 @allow_only(['patient'])
@@ -19,15 +20,15 @@ def home(request):
 @allow_only(['patient'])
 def chat(request):
     user = request._user
-    conversation, _ = ConversationService.get_or_create_conversation(user)
-    chat_session, is_new_session = ConversationService.get_or_create_chat_session(
+    conversation, _ = ConversationManager.get_or_create_conversation(user)
+    chat_session, is_new_session = ConversationManager.get_or_create_chat_session(
         conversation)
-    chatbot_service = ChatbotService(conversation, chat_session)
+    pipeline = SessionPipeline(conversation, chat_session)
 
     if request.method == 'GET':
-        chat_obj = chatbot_service.chat_history_service.get_recent()
-        # chat_obj = chatbot_service.chat_history_service.filter_by({})
-        # chat_obj = chatbot_service.chat_history_service.get_from_session()
+        chat_obj = pipeline.history_manager.get_recent()
+        # chat_obj = pipeline.history_manager.filter_by({})
+        # chat_obj = pipeline.history_manager.get_from_session()
         chat = ChatMessageSerializer(chat_obj, many=True)
         return Response({'data': chat.data, 'session': {'id': chat_session.id, 'is_new': is_new_session}}, status=200)
 
@@ -36,7 +37,7 @@ def chat(request):
         if not user_response:
             return Response({'error': 'Invalid request'}, status=400)
         try:
-            response = chatbot_service.trigger_pipeline(user_response)
+            response = pipeline.trigger_pipeline(user_response)
         except Exception as e:
             return Response({'error': e}, status=500)
         return Response({'ai_response': response}, status=200)
