@@ -41,7 +41,7 @@ class AssessmentRecord(models.Model):
 
 class AssessmentResult(models.Model):
     id = ShortUUIDField(primary_key=True, prefix='res_')
-    assessment = models.ForeignKey(Assessment, related_name='results', on_delete=models.CASCADE)
+    assessment = models.OneToOneField(Assessment, related_name='result', on_delete=models.CASCADE)
     score = models.IntegerField()
     severity = models.CharField(max_length=20, null=True, blank=True)
     timestamp = models.DateTimeField(auto_now_add=True)

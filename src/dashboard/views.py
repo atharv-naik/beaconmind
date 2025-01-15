@@ -15,7 +15,7 @@ def home(request):
 def assessment(request, assessment_id):
     assessment = get_object_or_404(Assessment, id=assessment_id)
     records = assessment.records.all().order_by('question_id')
-    result = assessment.results.first()
+    result = getattr(assessment, 'result', None)
 
     scores = []
     phase = PhaseMap.get(assessment.type)
