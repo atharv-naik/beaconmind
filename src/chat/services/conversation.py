@@ -1,5 +1,5 @@
 from datetime import timedelta
-from typing import Union
+from typing import List, Tuple, Union
 
 from django.contrib.auth.base_user import AbstractBaseUser
 from django.db.models.query import QuerySet
@@ -36,6 +36,22 @@ class HistoryManager:
             messages=memory.chat_memory.messages
         )
         return retrieved_chat_history
+    
+    def get_full_list(self) -> List[Tuple[str, str]]:
+        """
+        Retrieves full chat history of user in list format
+        """
+        chat_obj = ChatMessage.objects.filter(
+            conversation_id=self.conversation_id).order_by('-timestamp')
+        chat_history = []
+        for msg in chat_obj:
+            chat_history.append(
+                ("human", ConversationManager.format_msg(msg))
+            )
+            chat_history.append(
+                ("ai", msg.ai_response)
+            )
+        return chat_history
 
     def get_recent(self, N: int = ChatSettings.LAST_N_HRS) -> QuerySet[ChatMessage]:
         """

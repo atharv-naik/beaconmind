@@ -4,6 +4,20 @@
 Patient Assessments
 {% endblock %}
 
+{% block styles %}
+<style>
+    .item {
+        cursor: pointer;
+        background: linear-gradient(135deg, var(--item-bg), var(--content-bg));
+        padding: 15px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+</style>
+{% endblock %}
+
 {% block content %}
 <div class="filter-sort" style="background-color: var(--content-bg); padding: 20px; border-radius: var(--item-border-radius); border-bottom: 1px solid var(--item-shadow)">
     <div class="row mb-4">
@@ -19,7 +33,9 @@ Patient Assessments
             <label for="filter-type" class="form-label" style="font-weight: bold; color: var(--text-color);">Filter by Type</label>
             <select id="filter-type" class="form-control" style="padding: 10px; background-color: var(--item-bg); color: var(--text-color); border: 1px solid var(--sidebar-border);">
                 <option value="">All</option>
-                <option value="phq9">PHQ9</option>
+                {% for phase in phase_map.all %}
+                <option value="{{ phase.name }}">{{ phase.verbose_name }}</option>
+                {% endfor %}
             </select>
         </div>
         <div class="col-md-4">
@@ -40,13 +56,13 @@ Patient Assessments
 
 <div id="assessments-list" class="assessments" style="margin: 20px 10px;">
     {% for assessment in assessments %}
-    <div class="item mb-3" onclick="window.location.href='{% url 'dashboard:assessment' assessment.id %}'" style="cursor: pointer; background: linear-gradient(135deg, var(--item-bg), var(--content-bg)); padding: 15px; border-radius: var(--item-border-radius); display: flex; align-items: center; justify-content: space-between;" data-status="{{ assessment.status }}" data-type="{{ assessment.get_type_display }}" data-timestamp="{{ assessment.timestamp|date:'U' }}" data-username="{{ assessment.patient.user.username|lower }}">
+    <div class="item mb-3" onclick="window.location.href='{% url 'dashboard:assessment' assessment.id %}'" data-status="{{ assessment.status }}" data-type="{{ assessment.type }}" data-timestamp="{{ assessment.timestamp|date:'U' }}" data-username="{{ assessment.patient.user.username|lower }}">
         <div>
             <h5 style="margin-bottom: 8px; font-size: 18px; color: var(--text-color);"><i class="material-icons" style="vertical-align: middle; margin-right: 8px; color: var(--text-color);">assignment</i>{{ assessment.patient.user.username }}'s {{ assessment.get_type_display }} Assessment</h5>
             <p style="margin: 0; font-size: 14px; color: var(--text-color);"><strong>Status:</strong> {{ assessment.status|capfirst }}</p>
             <p style="margin: 0; font-size: 14px; color: var(--text-color);">
                 {% if assessment.status == 'completed' %}
-                Completed {{ assessment.timestamp|timesince }} ago
+                Completed {{ assessment.completed_at|timesince }} ago
                 {% else %}
                 Started {{ assessment.timestamp|timesince }} ago
                 {% endif %}

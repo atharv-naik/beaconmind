@@ -56,6 +56,25 @@ class PromptStore:
         """
     )
 
+    GAD7_INIT = textwrap.dedent(
+        """
+        Please play a role of an empathetic and kind psychiatrist. Your role is to assess the patient's mental health over time based on their responses to the GAD-7 questionnaire.
+
+        GAD-7 Questions (Henceforth referred to as the `assessment questionaire`):
+        1. Feeling nervous, anxious, or on edge?
+        2. Not being able to stop or control worrying?
+        3. Worrying too much about different things?
+        4. Trouble relaxing?
+        5. Being so restless that it is hard to sit still?
+        6. Becoming easily annoyed or irritable?
+        7. Feeling afraid as if something awful might happen?
+
+        Each question has a scale from 0 to 3 (`assessment questionaire` scoring guide) -> 0: Not at all, 1: Several days, 2: More than half the days, 3: Nearly every day.
+
+        The following is the conversation between you and the patient till now:\n
+        """
+    )
+
     EVAL = textwrap.dedent(
         """
         Use the following pseudo-code as a reference to understand the interpretation logic. Follow these steps to generate the interpretation result as JSON object.
@@ -63,7 +82,7 @@ class PromptStore:
         VAR patient_metrics = {patient_metrics}  # Dictionary containing the patient's evaluation scores
         DEFINE FUNCTION evaluate_response(latest_response, previous_response, conversation_context, patient_metrics):
             # Step 1: Check if the conversation is "BEGIN"
-            IF is_first_message(latest_response) OR is_new_conversation(latest_response, conversation_context):
+            IF is_first_message(latest_response) OR is_new_conversation(latest_response, conversation_context) OR is_new_phase(latest_response, conversation_context):
                 RETURN {{
                     "chat_status": "BEGIN",
                     "evaluation": null
@@ -111,6 +130,9 @@ class PromptStore:
 
         FUNCTION is_new_conversation(response, conversation_context):
             RETURN large_time_gap(response.timestamp, conversation_context) [>1 day] OR new_topic_detected(response)
+        
+        FUNCTION is_new_phase(response, conversation_context):
+            RETURN prev_phase_concluded() AND new_phase_started()
 
         FUNCTION is_ambiguous(response):
             RETURN response.content IS NULL OR response IS unclear ("hmm...", "ok", etc.)
@@ -194,6 +216,43 @@ class PromptStore:
             "response_to_user"(str): "Your response to the patient here.",  
             "question_id"(int): "The ID of the question being asked (i.e., `q_i`).",  
             "question"(str): "The original `assessment questionnaire` question being asked (i.e., `q_i`)."  
+        }}
+        """
+    ) + Meta.IMPORTANT
+
+    SCORE = textwrap.dedent(
+        """
+        The above are some chat conversations between a bot designed to conduct a {assessment_name} assessment and a patient. Based on the conversation evaluate and score the patient for all the {assessment_name} questions. Output as a single JSON object. To each question's evaluation add a remark or a short justification (key `remark`) based on the patient's response. Also add a key `snippet` that holds the snippet of message that was used for justifying the score. Another key (optional) `keywords` to be added to contain any noteworthy/important points from any message (if any). This will be a list of short keywords (strings).
+        The JSON object should have the following structure:
+        {{
+            "q_id": {{
+                "score": num,
+                "remark": "short justification",
+                "snippet": "snippet from the msg",
+                "keywords": ["keyword1", "keyword2", ...],
+            }},
+            ...
+        }}
+        ex. json.:
+        {{
+            "1": {{
+                "score": 2,
+                "remark": "some remark...",
+                "snippet": "msg snippet supporting remark...",
+                "keywords": ["keyword1", "keyword2", ...],
+            }},
+            ...
+        }}
+        Key `score` holds integer values. `remark` and `snippet` are strings. `keywords` is List[str] type. `q_id` must be chosen appropriately from the {assessment_name} questions described earlier. Make your remarks discriptive but concise. And keep snippets short and relevant.
+        """
+    ) + Meta.IMPORTANT
+
+    CONCLUDE = textwrap.dedent(
+        """
+        The assessment is now complete. The patient has been evaluated for all the {prev_assessment_name} questions. The next phase is {next_assessment_name}. Prepare a closing message for the patient. Based on the previous assessment, write a closing message that is empathetic and supportive. The closing message should acknowledge conclusion of current assessment and prepare the patient for the next phase. The next phase of {next_assessment_name} can be introduced and begin whenever the patient is ready. 
+        Output as a single JSON object with the following structure:
+        {{
+            "response_to_user"(str): "Your closing message here."
         }}
         """
     ) + Meta.IMPORTANT

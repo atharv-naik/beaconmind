@@ -2,13 +2,13 @@ from django.db import models
 from shortuuid.django_fields import ShortUUIDField
 
 from accounts.models import Patient
-from assessments.definitions import PHQ9Phase
+from assessments.definitions import PHQ9Phase, GAD7Phase
 
 
 class Assessment(models.Model):
     types = (
         (PHQ9Phase().name, PHQ9Phase().verbose_name),
-        # ('gad7', 'GAD7'), # TODO: Add GAD7
+        (GAD7Phase().name, GAD7Phase().verbose_name),
     )
     status = (
         ('pending', 'Pending'),
@@ -18,7 +18,8 @@ class Assessment(models.Model):
     patient = models.ForeignKey(Patient, related_name='assessments', on_delete=models.CASCADE)
     type = models.CharField(max_length=30, choices=types, default=PHQ9Phase().name)
     status = models.CharField(max_length=10, choices=status, default='pending')
-    timestamp = models.DateTimeField(auto_now_add=True)
+    timestamp = models.DateTimeField(verbose_name="Started at", auto_now_add=True)
+    completed_at = models.DateTimeField(blank=True, null=True)
 
     def __str__(self):
         return f"{self.patient.user.username}'s {self.get_type_display()} assessment"
@@ -30,7 +31,10 @@ class AssessmentRecord(models.Model):
     question_text = models.CharField(max_length=255, default='')
     score = models.IntegerField()
     timestamp = models.DateTimeField(auto_now_add=True)
-    remarks = models.TextField(blank=True, null=True)
+    remark = models.TextField(blank=True, null=True)
+    snippet = models.TextField(blank=True, null=True)
+    keywords = models.JSONField(blank=True, null=True, default=list)
+    dirty = models.BooleanField(default=False)
 
     class Meta:
         verbose_name = 'Assessment Record'

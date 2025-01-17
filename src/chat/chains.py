@@ -31,25 +31,31 @@ class BasePrompt:
 
     def __init__(
         self,
-        system_init_message,
+        system_init_message=None,
         human_message="{input}",
-        system_post_message=None
+        system_post_message=None,
+        include_history=True,
+        include_human_input=True,
     ):
         self.system_init_message = system_init_message
         self.human_message = human_message
         self.system_post_message = system_post_message
+        self.include_history = include_history
+        self.include_human_input = include_human_input
 
     def create_prompt(self) -> ChatPromptTemplate:
-        prompt = ChatPromptTemplate.from_messages(
-            [
-                ("system", self.system_init_message),
-                MessagesPlaceholder(variable_name="history", optional=True),
-                ("human", self.human_message),
-            ]
-        )
+        messages = []
+
+        if self.system_init_message:
+            messages.append(("system", self.system_init_message))
+        if self.include_history:
+            messages.append(MessagesPlaceholder(variable_name="history", optional=True))
+        if self.include_human_input:
+            messages.append(("human", self.human_message))
         if self.system_post_message:
-            prompt.append(("system", self.system_post_message))
-        return prompt
+            messages.append(("system", self.system_post_message))
+
+        return ChatPromptTemplate.from_messages(messages)
 
 
 class Prompts:
@@ -71,6 +77,32 @@ class Prompts:
                 system_post_message=PromptStore.DECISION,
                 **kwargs
             ),
+            "phq9.score": lambda: BasePrompt(
+                system_init_message=PromptStore.PHQ9_INIT,
+                system_post_message=PromptStore.SCORE,
+                include_human_input=False,
+                **kwargs
+            ),
+            "gad7.eval": lambda: BasePrompt(
+                system_init_message=PromptStore.GAD7_INIT,
+                system_post_message=PromptStore.EVAL,
+                **kwargs
+            ),
+            "gad7.decision": lambda: BasePrompt(
+                system_init_message=PromptStore.GAD7_INIT,
+                system_post_message=PromptStore.DECISION,
+                **kwargs
+            ),
+            "gad7.score": lambda: BasePrompt(
+                system_init_message=PromptStore.GAD7_INIT,
+                system_post_message=PromptStore.SCORE,
+                include_human_input=False,
+                **kwargs
+            ),
+            "conclude": lambda: BasePrompt(                 # phase agnostic chain
+                system_post_message=PromptStore.CONCLUDE,
+                **kwargs
+            ),
         }
         return prompts_map.get(prompt_type, lambda: None)().create_prompt()
 
@@ -85,9 +117,10 @@ class ChainBuilder:
         ChainBuilder()
         .with_model("gpt-4o")
         .with_prompt("default")
-        .add_step(my_custom_step)
+        .add_step(custom_step)
         .build()
     )
+    chain.invoke(data)
     ```
     """
 
@@ -134,9 +167,57 @@ class ChainStore:
         .with_prompt("phq9.decision")
         .build()
     )
+    phq9_score_chain = (
+        ChainBuilder()
+        .with_model("gpt-4o")
+        .with_prompt("phq9.score")
+        .build()
+    )
+    gad7_eval_chain = (
+        ChainBuilder()
+        .with_model("gpt-4o")
+        .with_prompt("gad7.eval")
+        .build()
+    )
+    gad7_decision_chain = (
+        ChainBuilder()
+        .with_model("gpt-4o")
+        .with_prompt("gad7.decision")
+        .build()
+    )
+    gad7_score_chain = (
+        ChainBuilder()
+        .with_model("gpt-4o")
+        .with_prompt("gad7.score")
+        .build()
+    )
+    conclude_chain = (
+        ChainBuilder()
+        .with_model("gpt-4o")
+        .with_prompt("conclude")
+        .build()
+    )
     
     @staticmethod
-    def get(phase, mode):
-        if not hasattr(ChainStore, f"{phase}_{mode}_chain"):
-            raise ValueError(f"Chain not found: {phase}_{mode}_chain")
-        return getattr(ChainStore, f"{phase}_{mode}_chain")
+    def get(mode, phase=None):
+        """
+        Retrieve a predefined chain from ChainStore.
+
+        Raises ValueError if chain is not found.
+        """
+        if phase:
+            chain_name = f"{phase}_{mode}_chain"
+        else:
+            chain_name = f"{mode}_chain"
+
+        if not hasattr(ChainStore, chain_name):
+            valid_chains = [
+                attr for attr in dir(ChainStore)
+                if attr.endswith("_chain") and not attr.startswith("__")
+            ]
+            raise ValueError(
+                f"Chain not found: {chain_name}. "
+                f"Available chains are: {', '.join(valid_chains)}"
+            )
+        
+        return getattr(ChainStore, chain_name)

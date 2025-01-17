@@ -3,13 +3,13 @@ from typing import Any, Dict, List, Tuple, Union
 
 
 class BaseAssessmentPhase(ABC):
-    """Abstract base class for assessment details."""
+    """Abstract base class for assessment phase details."""
 
     @property
     @abstractmethod
     def name(self) -> str:
         """
-        System name of the assessment
+        System name of the phase
 
         For system reference (e.g. in the database). The `Patient.phase` field points to this value. 
         Starts with `assessment.` prefix. ex. `assessment.phq9`
@@ -17,16 +17,15 @@ class BaseAssessmentPhase(ABC):
         pass
 
     @property
-    @abstractmethod
     def short_name(self) -> str:
-        """Short system name of the assessment."""
-        pass
+        """Short system name of the phase."""
+        return self.name.split(".")[-1]
 
     @property
     @abstractmethod
     def verbose_name(self) -> str:
         """
-        Verbose/display name of the assessment
+        Verbose/display name of the phase
         
         For user reference (e.g. in the dashboard)
         """
@@ -47,26 +46,24 @@ class BaseAssessmentPhase(ABC):
     @property
     @abstractmethod
     def low(self) -> int:
-        """Minimum score for the assessment."""
+        """Minimum score for any assessment question."""
         pass
 
     @property
     @abstractmethod
     def high(self) -> int:
-        """Maximum score for the assessment."""
+        """Maximum score for any assessment question."""
         pass
 
     @property
-    @abstractmethod
     def span(self) -> Tuple[int, int]:
-        """Score range (low, high) for the assessment."""
-        pass
+        """Score range (low, high) for assessment questions."""
+        return self.low, self.high
 
     @property
-    @abstractmethod
     def cap(self) -> int:
         """Cap score `(N*high)` for the assessment."""
-        pass
+        return self.N * self.high
 
     def get(self, id: int) -> str:
         """Get the question text for a given question ID."""
@@ -75,8 +72,13 @@ class BaseAssessmentPhase(ABC):
         raise ValueError(f"Invalid question ID: {id}")
     
     @abstractmethod
-    def severity(self, data: Dict[int, Dict[str, int]]) -> str:
+    def severity(self, data: Dict[str, Dict[str, int]]) -> str:
         """Get severity based on assessment scores."""
+        pass
+
+    @abstractmethod
+    def total_score(self, data: Dict[str, Dict[str, int]]) -> int:
+        """Get the total score of the assessment."""
         pass
 
     def __str__(self):
@@ -93,10 +95,6 @@ class PHQ9Phase(BaseAssessmentPhase):
         return "assessment.phq9"
     
     @property
-    def short_name(self) -> str:
-        return self.name.split(".")[-1]
-
-    @property
     def verbose_name(self) -> str:
         return "PHQ9"
 
@@ -111,14 +109,6 @@ class PHQ9Phase(BaseAssessmentPhase):
     @property
     def high(self) -> int:
         return 3
-    
-    @property
-    def span(self) -> Tuple[int, int]:
-        return self.low, self.high
-    
-    @property
-    def cap(self) -> int:
-        return self.N * self.high
 
     @property
     def questions(self) -> List[Dict[str, Union[int, str]]]:
@@ -134,9 +124,12 @@ class PHQ9Phase(BaseAssessmentPhase):
             {"id": 9, "text": "Thoughts that you would be better off dead, or of hurting yourself"},
         ]
 
-    def severity(self, data: Dict[int, Dict[str, int]]) -> str:
+    def severity(self, data: Union[Dict[str, Dict[str, int]], int]) -> str:
         """Get the severity of depression based on the PHQ-9 score."""
-        score = sum([data[q_id]["score"] for q_id in range(1, self.N + 1)])
+        if isinstance(data, int):
+            score = data
+        else:
+            score = sum([data[str(q_id)]["score"] for q_id in range(1, self.N + 1)])
         match score:
             case n if n <= 4:
                 return "Minimal depression"
@@ -148,23 +141,79 @@ class PHQ9Phase(BaseAssessmentPhase):
                 return "Moderately severe depression"
             case _:
                 return "Severe depression"
+    
+    def total_score(self, data: Dict[str, Dict[str, int]]) -> int:
+        """Get the total score of the PHQ-9 assessment."""
+        return sum([data[str(q_id)]["score"] for q_id in range(1, self.N + 1)])
 
 
 class GAD7Phase(BaseAssessmentPhase):
-    # TODO: Add GAD7
-    pass
+    
+    @property
+    def name(self) -> str:
+        return "assessment.gad7"
+    
+    @property
+    def verbose_name(self) -> str:
+        return "GAD7"
+    
+    @property
+    def N(self) -> int:
+        return 7
+    
+    @property
+    def low(self) -> int:
+        return 0
+    
+    @property
+    def high(self) -> int:
+        return 3
+    
+    @property
+    def questions(self) -> List[Dict[str, Union[int, str]]]:
+        return [
+            {"id": 1, "text": "Feeling nervous, anxious or on edge?"},
+            {"id": 2, "text": "Not being able to stop or control worrying?"},
+            {"id": 3, "text": "Worrying too much about different things?"},
+            {"id": 4, "text": "Trouble relaxing?"},
+            {"id": 5, "text": "Being so restless that it is hard to sit still?"},
+            {"id": 6, "text": "Becoming easily annoyed or irritable?"},
+            {"id": 7, "text": "Feeling afraid as if something awful might happen?"},
+        ]
+    
+    def severity(self, data: Union[Dict[int, Dict[str, int]], int]) -> str:
+        """Get the severity of anxiety based on the GAD-7 score."""
+        if isinstance(data, int):
+            score = data
+        else:
+            score = sum([data[q_id]["score"] for q_id in range(1, self.N + 1)])
+        match score:
+            case n if n <= 4:
+                return "Minimal anxiety"
+            case n if n <= 9:
+                return "Mild anxiety"
+            case n if n <= 14:
+                return "Moderate anxiety"
+            case _:
+                return "Severe anxiety"
+    
+    def total_score(self, data: Dict[int, Dict[str, int]]) -> int:
+        """Get the total score of the GAD-7 assessment."""
+        return sum([data[q_id]["score"] for q_id in range(1, self.N + 1)])
 
 
 class PhaseMap:
 
     _seq = [
         PHQ9Phase().name,
+        GAD7Phase().name,
         # ...,
         # "monitoring",
     ]
 
     _mapper = {
         PHQ9Phase().name: PHQ9Phase(),
+        GAD7Phase().name: GAD7Phase(),
         # ...,
         # "monitoring": None,
     }
@@ -177,6 +226,10 @@ class PhaseMap:
     @classmethod
     def get(cls, name: str) -> BaseAssessmentPhase:
         return cls._mapper.get(name)
+    
+    @classmethod
+    def all(cls) -> List[BaseAssessmentPhase]:
+        return [cls._mapper[name] for name in cls._seq]
 
     @classmethod
     def next(cls, current: str) -> str:
@@ -187,18 +240,78 @@ class PhaseMap:
 
 
 if __name__ == "__main__":
+    from icecream import ic
+
     phase = PHQ9Phase()
-    print(phase)
-    print(phase.name)
-    print(phase.short_name)
-    print(phase.verbose_name)
-    print(phase.questions)
-    print(phase.N)
-    print(phase.low)
-    print(phase.high)
-    print(phase.span)
-    print(phase.cap)
-    print(phase.get(1))
-    print(phase.severity({1: {"score": 0}, 2: {"score": 1}, 3: {"score": 2}, 4: {"score": 3}, 5: {"score": 0}, 6: {"score": 1}, 7: {"score": 2}, 8: {"score": 3}, 9: {"score": 0}}))
-    print(PhaseMap.first())
-    print(PhaseMap.get("assessment.phq9"))
+    phase = ic(PhaseMap.get(PhaseMap.next("assessment.phq9")))
+    ic(phase)
+    ic(phase.name)
+    ic(phase.short_name)
+    ic(phase.verbose_name)
+    ic(phase.questions)
+    ic(phase.N)
+    ic(phase.low)
+    ic(phase.high)
+    ic(phase.span)
+    ic(phase.cap)
+    ic(phase.get(1))
+    scores = {
+        "1": {
+            "score": 0,
+            "remark": "The patient enjoys activities and finds pleasure in them.",
+            "snippet": "I enjoy stuff mostly.",
+            "keywords": ["enjoy activities", "positive mood"]
+        },
+        "2": {
+            "score": 2,
+            "remark": "The patient feels down and like a 'loser' due to job placement pressures.",
+            "snippet": "I feel a loser... yet to land a job while my friends have grabbed like 50lpa+ jobs.",
+            "keywords": ["job pressure", "feeling down"]
+        },
+        "3": {
+            "score": 0,
+            "remark": "The patient reports no changes in sleep patterns.",
+            "snippet": "Nothing particular here.",
+            "keywords": ["consistent sleep"]
+        },
+        "4": {
+            "score": 1,
+            "remark": "The patient feels tired frequently but attributes it to being naturally less energetic.",
+            "snippet": "I guess I am always tired... I've always been a lazy person.",
+            "keywords": ["low energy", "natural pace"]
+        },
+        "5": {
+            "score": 0,
+            "remark": "The patient has a consistent appetite and enjoys eating.",
+            "snippet": "I'm a foodie so naturally I eat a lot.",
+            "keywords": ["consistent appetite", "enjoys food"]
+        },
+        "6": {
+            "score": 2,
+            "remark": "The patient feels like a failure due to comparison with peers during placement season.",
+            "snippet": "I feel a loser... my friends have grabbed like 50lpa+ jobs.",
+            "keywords": ["feeling failure", "peer comparison"]
+        },
+        "7": {
+            "score": 0,
+            "remark": "The patient enjoys reading and distracts themselves intentionally with anime.",
+            "snippet": "I love reading... intentionally distract myself by watching excessive anime.",
+            "keywords": ["enjoys reading", "distraction"]
+        },
+        "8": {
+            "score": 0,
+            "remark": "The patient has not noticed restlessness or slow movements.",
+            "snippet": "No no nah.",
+            "keywords": []
+        },
+        "9": {
+            "score": 0,
+            "remark": "The patient does not report thoughts of self-harm or being better off not around.",
+            "snippet": "Not that sort of stuff.",
+            "keywords": []
+        }
+    }
+    ic(phase.severity(scores))
+    ic(phase.total_score(scores))
+    ic(PhaseMap.first())
+    ic(PhaseMap.get("assessment.phq9"))

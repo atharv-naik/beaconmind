@@ -8,7 +8,10 @@ from accounts.decorators import allow_only
 @allow_only(['doctor'])
 def home(request):
     assessments = Assessment.objects.all()
-    return render(request, 'dashboard/home.html', {'assessments': assessments})
+    return render(request, 'dashboard/home.html', {
+        'assessments': assessments, 
+        'phase_map': PhaseMap
+    })
 
 
 @allow_only(['doctor'])
@@ -21,8 +24,9 @@ def assessment(request, assessment_id):
     phase = PhaseMap.get(assessment.type)
     idx = 0
     curr_score = 0
+    n_records = records.count()
     for q_id in range(1, phase.N + 1):
-        if idx < records.count() and records[idx].question_id == q_id:
+        if idx < n_records and records[idx].question_id == q_id:
             scores.append(records[idx].score)
             curr_score += records[idx].score
             idx += 1

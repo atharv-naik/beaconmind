@@ -28,10 +28,78 @@
 
   .item {
     margin-bottom: 10px;
+    position: relative;
   }
 
   .item:last-child {
     margin-bottom: 0;
+  }
+
+  .info {
+    display: flex;
+    flex-direction: column;
+  }
+
+  .info div {
+    display: flex;
+    justify-content: space-between;
+    gap: 20px;
+  }
+
+  .drawer-arrow {
+    position: absolute;
+    bottom: 0;
+    right: 50%;
+    transform: translateX(50%);
+    opacity: 0.5;
+    display: none;
+  }
+
+  .drawer-arrow svg {
+    transition: transform 0.5s ease;
+  }
+
+  .item:hover .drawer-arrow {
+    display: block;
+  }
+
+  .highlight-click {
+    outline: 2px solid var(--accent-color);
+  }
+
+  .clickable {
+    cursor: pointer;
+  }
+
+  .drawer-info {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    font-size: 14px;
+    font-style: italic;
+    max-height: 0;
+    overflow: hidden;
+    transition: max-height 0.5s ease;
+    margin: 10px;
+  }
+
+  .drawer .drawer-info {
+    max-height: 100px;
+  }
+
+  .drawer .drawer-arrow svg {
+    transform: rotate(180deg);
+  }
+
+  #no-data {
+    display: grid;
+    place-items: center;
+    height: 100%;
+    font-weight: bold;
+    font-size: 32px;
+    color: var(--text-color);
+    font-family: monospace;
+    opacity: 0.5;
   }
 </style>
 {% endblock %} {% block header %}
@@ -107,15 +175,35 @@
           width: 100%;
         "
       >
-        <div>
+        <div class="info">
           <div style="font-size: 15px; margin: 2px 0">
-            Patient: {{ assessment.patient.user.username }}
+            <span>
+              Patient :
+            </span>
+            <span>
+              {{ assessment.patient.user.username }}
+            </span>
           </div>
           <div style="font-size: 15px; margin: 2px 0">
-            Status: {{ assessment.status }}
+            <span>
+              Status :
+            </span>
+            <span>
+              {{ assessment.status }}
+              {% if assessment.status == "pending" %}
+                <svg xmlns="http://www.w3.org/2000/svg" height="22px" viewBox="0 -960 960 960" width="22px" fill="var(--text-color)"><path d="M280-420q25 0 42.5-17.5T340-480q0-25-17.5-42.5T280-540q-25 0-42.5 17.5T220-480q0 25 17.5 42.5T280-420Zm200 0q25 0 42.5-17.5T540-480q0-25-17.5-42.5T480-540q-25 0-42.5 17.5T420-480q0 25 17.5 42.5T480-420Zm200 0q25 0 42.5-17.5T740-480q0-25-17.5-42.5T680-540q-25 0-42.5 17.5T620-480q0 25 17.5 42.5T680-420ZM480-80q-83 0-156-31.5T197-197q-54-54-85.5-127T80-480q0-83 31.5-156T197-763q54-54 127-85.5T480-880q83 0 156 31.5T763-763q54 54 85.5 127T880-480q0 83-31.5 156T763-197q-54 54-127 85.5T480-80Zm0-80q134 0 227-93t93-227q0-134-93-227t-227-93q-134 0-227 93t-93 227q0 134 93 227t227 93Zm0-320Z"/></svg>
+              {% else %}
+                <svg xmlns="http://www.w3.org/2000/svg" height="20px" viewBox="0 -960 960 960" width="20px" fill="var(--text-color)"><path d="m424-296 282-282-56-56-226 226-114-114-56 56 170 170Zm56 216q-83 0-156-31.5T197-197q-54-54-85.5-127T80-480q0-83 31.5-156T197-763q54-54 127-85.5T480-880q83 0 156 31.5T763-763q54 54 85.5 127T880-480q0 83-31.5 156T763-197q-54 54-127 85.5T480-80Zm0-80q134 0 227-93t93-227q0-134-93-227t-227-93q-134 0-227 93t-93 227q0 134 93 227t227 93Zm0-320Z"/></svg>
+              {% endif %}
+            </span>
           </div>
           <div style="font-size: 15px; margin: 2px 0">
-            Severity: {{ assessment.results.severity|default:'--' }}
+            <span>
+              Severity :
+            </span>
+            <span style="font-weight: bold; font-family: monospace">
+              {{ assessment.result.severity|default:'--' }}
+            </span>
           </div>
         </div>
         <div
@@ -146,16 +234,29 @@
     style="flex: 1; max-width: 50%; height: 100%"
   >
     <div id="records-list" class="records">
+      {% if records|length == 0 %}
+        <div id="no-data">
+          <div style="display: flex; gap: 10px; align-items: center">
+            <span>No Data</span>
+            <svg xmlns="http://www.w3.org/2000/svg" height="48px" viewBox="0 -960 960 960" width="48px" fill="var(--text-color)"><path d="M80-200v-80h400v80H80Zm0-200v-80h200v80H80Zm0-200v-80h200v80H80Zm744 400L670-354q-24 17-52.5 25.5T560-320q-83 0-141.5-58.5T360-520q0-83 58.5-141.5T560-720q83 0 141.5 58.5T760-520q0 29-8.5 57.5T726-410l154 154-56 56ZM560-400q50 0 85-35t35-85q0-50-35-85t-85-35q-50 0-85 35t-35 85q0 50 35 85t85 35Z"/></svg>
+          </div>
+        </div>
+      {% endif %}
       {% for record in records %}
       <div
-        class="item"
+        class="item clickable"
         style="
           background-color: var(--item-bg);
           padding: 10px;
           border-radius: 8px;
         "
+        data-qid="{{ record.question_id }}"
+        onclick="this.classList.toggle('drawer')"
       >
-        <h6
+        <div class="drawer-arrow">
+          <svg xmlns="http://www.w3.org/2000/svg" height="24px" viewBox="0 -960 960 960" width="24px" fill="var(--text-color)"><path d="M480-344 240-584l56-56 184 184 184-184 56 56-240 240Z"/></svg>
+        </div>
+        <div
           style="margin-bottom: 6px; font-size: 15px; color: var(--text-color)"
         >
           <i
@@ -163,13 +264,23 @@
             style="vertical-align: middle; margin-right: 6px; scale: 0.9"
             >check_circle</i
           >Q{{ record.question_id }}: {{ record.question_text }}
-        </h6>
+        </div>
+        <div class="record-details drawer-info">
+          <span title="Remark">
+            <svg xmlns="http://www.w3.org/2000/svg" height="20px" viewBox="0 -960 960 960" width="20px" fill="var(--back-icon-fill)"><path d="M192-396v-72h288v72H192Zm0-150v-72h432v72H192Zm0-150v-72h432v72H192Zm336 504v-113l210-209q7.26-7.41 16.13-10.71Q763-528 771.76-528q9.55 0 18.31 3.5Q798.83-521 806-514l44 45q6.59 7.26 10.29 16.13Q864-444 864-435.24t-3.29 17.92q-3.3 9.15-10.71 16.32L641-192H528Zm288-243-45-45 45 45ZM576-240h45l115-115-22-23-22-22-116 115v45Zm138-138-22-22 44 45-22-23Z"/></svg>
+            {{ record.remark|default:'No remark' }} 
+          </span>
+          <span title="Snippet"> 
+            <svg xmlns="http://www.w3.org/2000/svg" height="20px" viewBox="0 -960 960 960" width="20px" fill="var(--back-icon-fill)"><path d="M216-144q-29.7 0-50.85-21.15Q144-186.3 144-216v-528q0-29.7 21.15-50.85Q186.3-816 216-816h384l216 216v384q0 29.7-21.15 50.85Q773.7-144 744-144H216Zm72-144h384v-72H288v72Zm0-144h384v-72H288v72Zm0-144h288v-72H288v72Z"/></svg>
+            "{{ record.snippet|default:'No snippet' }}"
+          </span>
+        </div>
         <div style="display: flex; justify-content: space-between">
           <p style="margin: 0; font-size: 14px">
-            <strong>Score:</strong> {{ record.score }}
+            <strong>Score</strong> {{ record.score }}
           </p>
-          <p style="margin: 0; font-size: 12px">
-            <em>{{ record.timestamp|timesince }} ago</em>
+          <p style="margin: 0; font-size: 12px; opacity: 0.8" title="Keywords">
+            <em>{{ record.keywords|join:', ' }}</em>
           </p>
         </div>
       </div>
@@ -240,13 +351,18 @@
                   },
                   onClick: (event, elements) => {
                       if (elements.length > 0) {
-                          const chart = elements[0].element;
                           const datasetIndex = elements[0].datasetIndex;
                           const dataIndex = elements[0].index
-                          const label = data.labels[dataIndex];
-                          const value = data.datasets[datasetIndex].data[dataIndex];
 
-                          console.log(`Bar clicked: ${label} - ${value}`);
+                          const item = document.querySelector(`.item[data-qid="${dataIndex + 1}"]`);
+                          item.classList.add('highlight-click')
+                          item.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                          if (!item.classList.contains('drawer')) {
+                            item.click();
+                          }
+                          setTimeout(() => {
+                            item.classList.remove('highlight-click');
+                          }, 800); 
                       }
                   },
                   plugins: {
@@ -270,7 +386,7 @@
                               bottom: 10
                           }
                       }
-                  }
+                  },
               }
           });
       };
@@ -279,7 +395,7 @@
           const canvas = document.getElementById("scoreCircleCanvas");
           const ctxCircle = canvas.getContext("2d");
 
-          let score = {{ assessment.results.score|default:curr_score|safe|default:0 }};
+          let score = {{ assessment.result.score|default:curr_score|safe|default:0 }};
           const maxScore = {{ phase.cap }};
           canvas.title = `Score: ${score}/${maxScore}`;
 
