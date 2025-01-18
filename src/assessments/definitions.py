@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from typing import Any, Dict, List, Tuple, Union
+from typing import Any, Dict, Iterable, List, Tuple, Union
 
 
 class BaseAssessmentPhase(ABC):
@@ -59,6 +59,17 @@ class BaseAssessmentPhase(ABC):
     def span(self) -> Tuple[int, int]:
         """Score range (low, high) for assessment questions."""
         return self.low, self.high
+    
+    @property
+    def range(self) -> Iterable[int]:
+        """Score range iterable for assessment questions."""
+        return range(self.low, self.high + 1)
+    
+    @property
+    @abstractmethod
+    def labels(self) -> List[str]:
+        """Labels for the assessment scores."""
+        pass
 
     @property
     def cap(self) -> int:
@@ -109,6 +120,10 @@ class PHQ9Phase(BaseAssessmentPhase):
     @property
     def high(self) -> int:
         return 3
+    
+    @property
+    def labels(self) -> List[str]:
+        return ["Not at all", "Several days", "More than half the days", "Nearly every day"]
 
     @property
     def questions(self) -> List[Dict[str, Union[int, str]]]:
@@ -170,6 +185,10 @@ class GAD7Phase(BaseAssessmentPhase):
         return 3
     
     @property
+    def labels(self) -> List[str]:
+        return ["Not at all", "Several days", "More than half the days", "Nearly every day"]
+    
+    @property
     def questions(self) -> List[Dict[str, Union[int, str]]]:
         return [
             {"id": 1, "text": "Feeling nervous, anxious or on edge?"},
@@ -186,7 +205,7 @@ class GAD7Phase(BaseAssessmentPhase):
         if isinstance(data, int):
             score = data
         else:
-            score = sum([data[q_id]["score"] for q_id in range(1, self.N + 1)])
+            score = sum([data[str(q_id)]["score"] for q_id in range(1, self.N + 1)])
         match score:
             case n if n <= 4:
                 return "Minimal anxiety"
@@ -199,7 +218,7 @@ class GAD7Phase(BaseAssessmentPhase):
     
     def total_score(self, data: Dict[int, Dict[str, int]]) -> int:
         """Get the total score of the GAD-7 assessment."""
-        return sum([data[q_id]["score"] for q_id in range(1, self.N + 1)])
+        return sum([data[str(q_id)]["score"] for q_id in range(1, self.N + 1)])
 
 
 class PhaseMap:
@@ -253,6 +272,7 @@ if __name__ == "__main__":
     ic(phase.low)
     ic(phase.high)
     ic(phase.span)
+    ic(phase.labels)
     ic(phase.cap)
     ic(phase.get(1))
     scores = {

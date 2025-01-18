@@ -186,11 +186,11 @@ class PromptStore:
 
         Task:
         - Select a random question (referred to as `q_i`) from the `u_metrics`. `q_i` *MUST* be picked from the `u_metrics` if it is not empty; otherwise, there are no more questions to ask.
-        - Prepare a response for the patient based on the `chat_status` as follows:
+        - Prepare a short informal response for the patient based on the `chat_status` as follows:
 
         Chat Status Handling:
         1. **BEGIN**:
-            - Initiate the conversation with a friendly greeting or acknowledgment or introduction. And then say something like "lets start the assessment" or similar.
+            - Initiate the conversation with a friendly greeting (potentially based on timestamp) or acknowledgment or introduction. In a short sentence convey about the assessment.
             - Craft a response that naturally introduces `q_i` into the conversation.
             - Avoid directly asking `q_i`; integrate it into the context.
 
@@ -235,11 +235,12 @@ class PromptStore:
         }}
         ex. json.:
         {{
-            "1": {{
+            ...,
+            "6": {{
                 "score": 2,
-                "remark": "some remark...",
-                "snippet": "msg snippet supporting remark...",
-                "keywords": ["keyword1", "keyword2", ...],
+                "remark": "The patient feels like a failure due to comparison with peers during placement season.",
+                "snippet": "I feel a loser... my friends have grabbed like 50lpa+ jobs.",
+                "keywords": ["feeling failure", "peer comparison"]
             }},
             ...
         }}
@@ -249,7 +250,7 @@ class PromptStore:
 
     CONCLUDE = textwrap.dedent(
         """
-        The assessment is now complete. The patient has been evaluated for all the {prev_assessment_name} questions. The next phase is {next_assessment_name}. Prepare a closing message for the patient. Based on the previous assessment, write a closing message that is empathetic and supportive. The closing message should acknowledge conclusion of current assessment and prepare the patient for the next phase. The next phase of {next_assessment_name} can be introduced and begin whenever the patient is ready. 
+        The assessment is now complete. The patient has been evaluated for all the {prev_assessment_name} questions. The next phase is {next_assessment_name}. Prepare a closing message for the patient. Based on the previous assessment, write a closing message that is empathetic and supportive. The closing message should acknowledge conclusion of current assessment and prepare the patient for the next phase. The next phase of {next_assessment_name} can be introduced and begin whenever the patient is ready.
         Output as a single JSON object with the following structure:
         {{
             "response_to_user"(str): "Your closing message here."
