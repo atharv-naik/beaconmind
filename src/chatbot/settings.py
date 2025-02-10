@@ -49,6 +49,7 @@ INSTALLED_APPS = [
     'assessments',
     'chat',
     'dashboard',
+    'pwa',
 ]
 
 CORS_ALLOW_ALL_ORIGINS = True
@@ -147,6 +148,16 @@ USE_TZ = True
 
 STATIC_URL = 'static/'
 STATIC_ROOT = BASE_DIR / 'static'
+
+# PWA settings
+PWA_APP_NAME = "AI4MentalWellness"
+PWA_APP_DESCRIPTION = "LLM powered chatbot designed for conducting assessments and monitoring"
+PWA_APP_THEME_COLOR = "#FFFFFF"
+PWA_APP_BACKGROUND_COLOR = "#000000"
+PWA_APP_DISPLAY = "standalone"
+PWA_APP_START_URL = "/"
+PWA_APP_ORIENTATION = "portrait"
+PWA_APP_SCOPE = "/"
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field

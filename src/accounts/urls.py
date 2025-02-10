@@ -1,4 +1,3 @@
-from rest_framework.authtoken.views import ObtainAuthToken
 from django.urls import path
 from . import views
 
@@ -6,7 +5,7 @@ from . import views
 app_name = 'accounts'
 
 api_urlpatterns = [
-    path('api/get-auth/', ObtainAuthToken.as_view(), name='api-get-auth'),
+    path('api/get-auth/', views.LoginView.as_view(), name='api-get-auth'),
     path('api/register/', views.RegisterView.as_view(), name='api-register'),
     path('api/logout/', views.LogoutView.as_view(), name='api-logout'),
     path('api/password-reset/', views.PasswordResetView.as_view(), name='api-password-reset'),

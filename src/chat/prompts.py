@@ -75,6 +75,32 @@ class PromptStore:
         """
     )
 
+    MONITORING_INIT = textwrap.dedent(
+        """
+        Please play a role of an empathetic and kind psychiatrist. Your role is to monitor the patient's mental health over time based on their responses to the monitoring questionnaire.
+
+        Monitoring Questions (Henceforth referred to as the `assessment questionaire`):
+        1. How have you been feeling emotionally over the past week?
+        2. Have you experienced any changes in your mood or energy levels?
+        3. Have you noticed any improvement or worsening in your [specific symptoms, e.g., anxiety, depression, psychosis]?
+        4. Have you experienced any new symptoms since your last visit?
+        5. Have you been taking your prescribed medications as directed?
+        6. Have you missed any doses? If yes, how often?
+        7. Have you experienced any side effects from your medications?
+        8. Have you been able to work on the goals or coping strategies discussed in your last session?
+        9. Do you feel that any particular challenges are hindering your progress?
+        10. Are you able to perform daily tasks as usual (e.g., work, household responsibilities)?
+        11. Have you engaged in social activities or connected with friends/family recently?
+        12. Have you experienced any aggressive or harmful impulses towards others?
+        13. Have you used any substances (e.g., alcohol, drugs) since your last visit?
+        14. Are there any concerns or challenges you'd like to discuss with your care team?
+
+        Each question has a scale from 0 to 3 (`assessment questionaire` scoring guide) -> 0: Not at all, 1: Mild, 2: Moderate, 3: Severe.
+
+        The following is the conversation between you and the patient till now:\n
+        """
+    )
+
     EVAL = textwrap.dedent(
         """
         Use the following pseudo-code as a reference to understand the interpretation logic. Follow these steps to generate the interpretation result as JSON object.
@@ -148,14 +174,6 @@ class PromptStore:
                 RETURN score
             RETURN NULL
 
-        FUNCTION all_questions_completed(patient_metrics, current_question_id):
-            IF unevaluated_questions.count() > 1:
-                RETURN FALSE
-            FOR question_id, score IN patient_metrics.items():
-                IF score == -1:
-                    RETURN !(question_id == current_question_id)
-            RETURN TRUE
-
         FUNCTION map_to_original_question(response, context):
             # Map paraphrased question to original assessment questionnaire question
             RETURN matched_question OR NULL
@@ -185,7 +203,8 @@ class PromptStore:
         prev_decision_result={prev_decision_result}
 
         Task:
-        - Select a random question (referred to as `q_i`) from the `u_metrics`. `q_i` *MUST* be picked from the `u_metrics` if it is not empty; otherwise, there are no more questions to ask.
+        - Select a random question (referred to as `q_i`) from the `u_metrics`. `q_i` *MUST* be picked from the `u_metrics` if it is not empty; otherwise, there are no more questions to ask. 
+        - `q_i` should be paraphrased based on the patient's latest response and the context of the conversation.
         - Prepare a short informal response for the patient based on the `chat_status` as follows:
 
         Chat Status Handling:
@@ -210,6 +229,8 @@ class PromptStore:
             - Acknowledge the completion of the assessment empathetically.
             - Provide a closing response to the patient.
             - Avoid asking any new questions.
+        
+        Regardless of the `chat_status` optionally, based on the chat context, share suggestions, advice, or words of encouragement and include them in the `response_to_user` key.
 
         Response Format:
         {{ 
@@ -222,7 +243,7 @@ class PromptStore:
 
     SCORE = textwrap.dedent(
         """
-        The above are some chat conversations between a bot designed to conduct a {assessment_name} assessment and a patient. Based on the conversation evaluate and score the patient for all the {assessment_name} questions. Output as a single JSON object. To each question's evaluation add a remark or a short justification (key `remark`) based on the patient's response. Also add a key `snippet` that holds the snippet of message that was used for justifying the score. Another key (optional) `keywords` to be added to contain any noteworthy/important points from any message (if any). This will be a list of short keywords (strings).
+        The above are some chat conversations between a bot designed to conduct a {assessment_name} assessment and a patient. Based on the conversation evaluate and score the patient for all the {assessment_name} questions. Output as a single JSON object. To each question's evaluation add a remark or a short justification (key `remark`) based on the patient's response. Also add a key `snippet` that holds the snippet of message that was used for justifying the score. Another key `keywords` to be added to contain any noteworthy/important points from any message (if any). This will be a list of short keywords (strings).
         The JSON object should have the following structure:
         {{
             "q_id": {{
@@ -250,7 +271,8 @@ class PromptStore:
 
     CONCLUDE = textwrap.dedent(
         """
-        The assessment is now complete. The patient has been evaluated for all the {prev_assessment_name} questions. The next phase is {next_assessment_name}. Prepare a closing message for the patient. Based on the previous assessment, write a closing message that is empathetic and supportive. The closing message should acknowledge conclusion of current assessment and prepare the patient for the next phase. The next phase of {next_assessment_name} can be introduced and begin whenever the patient is ready.
+        The assessment is now complete. The patient has been evaluated for all the {prev_assessment_name} questions. The next phase is "{next_assessment_name}". Prepare a closing message for the patient. Based on the previous assessment, write a closing message that is empathetic and supportive. The next phase of {next_assessment_name} can begin whenever the patient is ready.
+        If the phase is `None` or `null` or not given, then the current session is complete. The patient can be informed that the session is complete and they can reach out whenever they are ready for another assessment next time.
         Output as a single JSON object with the following structure:
         {{
             "response_to_user"(str): "Your closing message here."

@@ -2,22 +2,26 @@ from django.db import models
 from shortuuid.django_fields import ShortUUIDField
 
 from accounts.models import Patient
-from assessments.definitions import PHQ9Phase, GAD7Phase
+from chat.models import ChatSession
+from assessments.definitions import PHQ9Phase, GAD7Phase, MonitoringPhase
 
 
 class Assessment(models.Model):
-    types = (
+    _types = (
         (PHQ9Phase().name, PHQ9Phase().verbose_name),
         (GAD7Phase().name, GAD7Phase().verbose_name),
+        (MonitoringPhase().name, MonitoringPhase().verbose_name),
     )
-    status = (
+    _status = (
         ('pending', 'Pending'),
         ('completed', 'Completed'),
+        ('aborted', 'Aborted'),
     )
     id = ShortUUIDField(primary_key=True, prefix='assess_')
     patient = models.ForeignKey(Patient, related_name='assessments', on_delete=models.CASCADE)
-    type = models.CharField(max_length=30, choices=types, default=PHQ9Phase().name)
-    status = models.CharField(max_length=10, choices=status, default='pending')
+    session = models.ForeignKey(ChatSession, related_name='assessments', on_delete=models.CASCADE, null=True, blank=True)
+    type = models.CharField(max_length=30, choices=_types, default=PHQ9Phase().name)
+    status = models.CharField(max_length=10, choices=_status, default='pending')
     timestamp = models.DateTimeField(verbose_name="Started at", auto_now_add=True)
     completed_at = models.DateTimeField(blank=True, null=True)
 

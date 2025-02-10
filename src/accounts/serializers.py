@@ -21,6 +21,30 @@ class UserSerializer(serializers.ModelSerializer):
         Token.objects.create(user=user)
         return user
 
+
+class UserRegisterSerializer(serializers.ModelSerializer):
+    phone = serializers.CharField(required=False, allow_blank=True)
+    address = serializers.CharField(required=False, allow_blank=True)
+    email = serializers.EmailField(required=True)
+    username = serializers.CharField(required=True)
+    password1 = serializers.CharField(write_only=True, required=True)
+    password2 = serializers.CharField(write_only=True, required=True)
+    role = serializers.ChoiceField(choices=User.ROLE_CHOICES, initial='patient', required=True) # role restrictions are enforced on the frontend
+
+    def validate(self, data):
+        if data['password1'] != data['password2']:
+            raise serializers.ValidationError("Passwords must match.")
+        return data
+
+    class Meta:
+        model = User
+        fields = ['username', 'email', 'phone', 'address', 'password1', 'password2', 'role']
+    
+    def create(self, validated_data):
+        user_data = {key: validated_data[key] for key in validated_data if key != 'password1' and key != 'password2'}
+        user = User.objects.create_user(**user_data, password=validated_data['password1'])
+        return user
+
 class PasswordResetSerializer(serializers.Serializer):
     old_password = serializers.CharField(write_only=True)
     new_password = serializers.CharField(write_only=True, validators=[validate_password])

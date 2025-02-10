@@ -34,8 +34,14 @@ class ChatMessage(models.Model):
         return f"{self.conversation.user.username} message: '{user_response_excerpt}'"
 
 class ChatSession(models.Model):
+    _status = (
+        ('open', 'Open'),
+        ('closed', 'Closed'),
+        ('aborted', 'Aborted'),
+    )
     id = ShortUUIDField(primary_key=True, prefix='sess_')
     conversation = models.ForeignKey(Conversation, default=None, on_delete=models.CASCADE)
+    status = models.CharField(max_length=10, choices=_status, default='open')
     timestamp = models.DateTimeField(auto_now_add=True, editable=True)
 
     class Meta:

@@ -26,9 +26,9 @@ def chat(request):
     pipeline = SessionPipeline(conversation, chat_session)
 
     if request.method == 'GET':
-        chat_obj = pipeline.history_manager.get_recent()
+        # chat_obj = pipeline.history_manager.get_recent()
         # chat_obj = pipeline.history_manager.filter_by({})
-        # chat_obj = pipeline.history_manager.get_from_session()
+        chat_obj = pipeline.history_manager.get_from_session()
         chat = ChatMessageSerializer(chat_obj, many=True)
         return Response({'data': chat.data, 'session': {'id': chat_session.id, 'is_new': is_new_session}}, status=200)
 

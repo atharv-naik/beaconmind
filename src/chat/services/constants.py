@@ -8,6 +8,7 @@ class ChatStates:
     DRIFT = 'DRIFT'
     NORMAL = 'NORMAL'
     CONCLUDE = 'CONCLUDE'
+    COMPLETE = 'COMPLETE'
 
     @staticmethod
     def is_BEGIN(object):
@@ -15,6 +16,6 @@ class ChatStates:
         return len([v for v in metrics.values() if v != -1]) == 0
 
     @staticmethod
-    def is_CONCLUDE(object):
+    def is_COMPLETE(object):
         metrics = object.get_assessment_progress()
-        return len([v for v in metrics.values() if v != -1]) == object.phase.N
+        return len([v for v in metrics.values() if v != -1]) == object.curr_phase.N

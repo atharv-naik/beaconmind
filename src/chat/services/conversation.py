@@ -10,6 +10,7 @@ from langchain.memory.chat_message_histories.in_memory import \
 
 from ..models import ChatMessage, ChatSession, Conversation
 from .config import ChatSettings
+from assessments.definitions import PhaseMap
 
 
 class HistoryManager:
@@ -108,6 +109,21 @@ class HistoryManager:
             .first()
         )
         return chat_obj["ai_marker"] if chat_obj else {}
+    
+    def _queryset_to_list(self, chat_obj: QuerySet[ChatMessage]) -> List[Tuple[str, str]]:
+        chat_history = []
+        for msg in chat_obj:
+            chat_history.append(
+                ("human", ConversationManager.format_msg(msg))
+            )
+            chat_history.append(
+                ("ai", msg.ai_response)
+            )
+        return chat_history
+    
+    def get_full_list_from_session(self) -> List[Tuple[str, str]]:
+        chat_obj = self.get_from_session()
+        return self._queryset_to_list(chat_obj)
 
 
 class ConversationManager:
@@ -125,32 +141,50 @@ class ConversationManager:
 
     @staticmethod
     def get_or_create_chat_session(conversation: Conversation) -> tuple[ChatSession, bool]:
-        last_message = ChatMessage.objects.filter(
-            conversation=conversation).order_by('-timestamp').first()
-        created = False
-        if last_message:
-            if last_message.user_response_timestamp:
-                time_inactive = timezone.now() - last_message.user_response_timestamp
-            else:
-                time_inactive = timezone.now() - last_message.timestamp
-            if time_inactive.total_seconds() / 60 > ChatSettings.SESSION_TIMEOUT:
-                # check if there is an existing valid session
-                last_session = ChatSession.objects.filter(
-                    conversation=conversation).order_by('-timestamp').first()
-                if last_session and last_session.timestamp > last_message.timestamp:
-                    chat_session = last_session
-                    chat_session.timestamp = timezone.now()
-                    chat_session.save(update_fields=['timestamp'])
-                else:
-                    chat_session = ChatSession.objects.create(
-                        conversation=conversation)
-                    created = True
-            else:
-                chat_session = last_message.chat_session
-        else:
-            chat_session, created = ChatSession.objects.get_or_create(
-                conversation=conversation)
-            if created:
-                chat_session.timestamp = timezone.now()
-                chat_session.save(update_fields=['timestamp'])
+        # last_message = ChatMessage.objects.filter(
+        #     conversation=conversation).order_by('-timestamp').first()
+        # created = False
+        # if last_message:
+        #     if last_message.user_response_timestamp:
+        #         time_inactive = timezone.now() - last_message.user_response_timestamp
+        #     else:
+        #         time_inactive = timezone.now() - last_message.timestamp
+        #     if time_inactive.total_seconds() / 60 > ChatSettings.SESSION_TIMEOUT:
+        #         # check if there is an existing valid session
+        #         last_session = ChatSession.objects.filter(
+        #             conversation=conversation).order_by('-timestamp').first()
+        #         if last_session and last_session.timestamp > last_message.timestamp:
+        #             chat_session = last_session
+        #             chat_session.timestamp = timezone.now()
+        #             chat_session.save(update_fields=['timestamp'])
+        #         else:
+        #             chat_session = ChatSession.objects.create(
+        #                 conversation=conversation)
+        #             created = True
+        #     else:
+        #         chat_session = last_message.chat_session
+        # else:
+        #     chat_session, created = ChatSession.objects.get_or_create(
+        #         conversation=conversation)
+        #     if created:
+        #         chat_session.timestamp = timezone.now()
+        #         chat_session.save(update_fields=['timestamp'])
+        # return chat_session, created
+
+        chat_session, created = ChatSession.objects.get_or_create(conversation=conversation, status='open')
+        if not created:
+            first_msg = chat_session.chatmessage_set.first()
+            if first_msg:
+                time_inactive = timezone.now() - first_msg.user_response_timestamp
+                if time_inactive.total_seconds() / 60 > ChatSettings.SESSION_TIMEOUT:
+                    chat_session.status = 'aborted'
+                    chat_session.save(update_fields=['status'])
+                    assessment = chat_session.assessments.filter(status='pending').first()
+                    if assessment:
+                        assessment.status = 'aborted'
+                        assessment.save(update_fields=['status'])
+                    # reset patient phase
+                    conversation.user.patient.phase = PhaseMap.first()
+                    conversation.user.patient.save(update_fields=['phase'])
+                    chat_session, created = ChatSession.objects.get_or_create(conversation=conversation, status='open')
         return chat_session, created

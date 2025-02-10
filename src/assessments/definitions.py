@@ -1,3 +1,7 @@
+"""
+Definitions for assessment phases and their details.
+"""
+
 from abc import ABC, abstractmethod
 from typing import Any, Dict, Iterable, List, Tuple, Union
 
@@ -97,6 +101,12 @@ class BaseAssessmentPhase(ABC):
 
     def __repr__(self):
         return self.name
+    
+    def __eq__(self, other):
+        """Checks equality based on the system name."""
+        if isinstance(other, BaseAssessmentPhase):
+            return self.name == other.name
+        return False
 
 
 class PHQ9Phase(BaseAssessmentPhase):
@@ -221,39 +231,105 @@ class GAD7Phase(BaseAssessmentPhase):
         return sum([data[str(q_id)]["score"] for q_id in range(1, self.N + 1)])
 
 
+class MonitoringPhase(BaseAssessmentPhase):
+
+    @property
+    def name(self) -> str:
+        return "monitoring"
+    
+    @property
+    def verbose_name(self) -> str:
+        return "Monitoring"
+    
+    @property
+    def N(self) -> int:
+        return len(self.questions)
+    
+    @property
+    def low(self) -> int:
+        return 0  # responses are not scored
+    
+    @property
+    def high(self) -> int:
+        return 0  # responses are not scored
+    
+    @property
+    def labels(self) -> List[str]:
+        return []
+    
+    @property
+    def questions(self) -> List[Dict[str, Union[int, str]]]:
+        return [
+            {"id": 1, "text": "How have you been feeling emotionally over the past week?"},
+            {"id": 2, "text": "Have you experienced any changes in your mood or energy levels?"},
+            {"id": 3, "text": "Have you noticed any improvement or worsening in your [specific symptoms, e.g., anxiety, depression, psychosis]?"},
+            {"id": 4, "text": "Have you experienced any new symptoms since your last visit?"},
+            {"id": 5, "text": "Have you been taking your prescribed medications as directed?"},
+            {"id": 6, "text": "Have you missed any doses? If yes, how often?"},
+            {"id": 7, "text": "Have you experienced any side effects from the medication?"},
+            {"id": 8, "text": "Have you been able to work on the goals or coping strategies discussed in your last session?"},
+            {"id": 9, "text": "Do you feel that any particular challenges are hindering your progress?"},
+            {"id": 10, "text": "Are you able to perform daily tasks as usual (e.g., work, household responsibilities)?"},
+            {"id": 11, "text": "Have you engaged in social activities or connected with friends/family recently?"},
+            {"id": 12, "text": "Have you experienced any aggressive or harmful impulses towards others?"},
+            {"id": 13, "text": "Have you used any substances (e.g., alcohol, drugs) since your last visit?"},
+            {"id": 14, "text": "Are there any concerns or challenges you'd like to discuss with your care team?"},
+        ]
+    
+    def severity(self, data: Union[Dict[int, Dict[str, int]], int]) -> str:
+        return "Not applicable"
+    
+    def total_score(self, data: Dict[int, Dict[str, int]]) -> int:
+        return 0
+
+
 class PhaseMap:
+    """Manager class for assessment phase mapping and sequence."""
 
     _seq = [
         PHQ9Phase().name,
         GAD7Phase().name,
-        # ...,
-        # "monitoring",
+        MonitoringPhase().name,
     ]
 
     _mapper = {
         PHQ9Phase().name: PHQ9Phase(),
         GAD7Phase().name: GAD7Phase(),
-        # ...,
-        # "monitoring": None,
+        MonitoringPhase().name: MonitoringPhase(),
     }
 
     @classmethod
     def first(cls) -> str:
-        """Get the first (init) phase in the sequence."""
+        """Get the first (init) phase name in the sequence."""
         return cls._seq[0]
+    
+    @classmethod
+    def last(cls) -> str:
+        """Get the last phase name in the sequence."""
+        return cls._seq[-1]
 
     @classmethod
     def get(cls, name: str) -> BaseAssessmentPhase:
         return cls._mapper.get(name)
     
     @classmethod
+    def get_first(cls) -> BaseAssessmentPhase:
+        return cls._mapper[cls.first()]
+    
+    @classmethod
+    def get_last(cls) -> BaseAssessmentPhase:
+        return cls._mapper[cls.last()]
+    
+    @classmethod
     def all(cls) -> List[BaseAssessmentPhase]:
         return [cls._mapper[name] for name in cls._seq]
 
     @classmethod
-    def next(cls, current: str) -> str:
+    def next(cls, current: str, wrap=False) -> str:
         """Get the next phase in the sequence."""
         assert current in cls._seq, f"Invalid phase: {current}"
+        if wrap:
+            return cls._seq[(cls._seq.index(current) + 1) % len(cls._seq)]
         assert current != cls._seq[-1], f"No next phase available after {current}"
         return cls._seq[cls._seq.index(current) + 1]
 
@@ -262,6 +338,7 @@ if __name__ == "__main__":
     from icecream import ic
 
     phase = PHQ9Phase()
+    ic(phase == PhaseMap.get(PhaseMap.first()))
     phase = ic(PhaseMap.get(PhaseMap.next("assessment.phq9")))
     ic(phase)
     ic(phase.name)

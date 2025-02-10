@@ -24,43 +24,47 @@ class SessionPipeline:
         self.history_manager = HistoryManager(
             self.conversation, self.chat_session)
         self.patient = conversation.user.patient
-        self.phase = PhaseMap.get(self.patient.phase)
-
-        assessment, _ = Assessment.objects.get_or_create(
-            patient=self.patient, type=self.phase.name, status="pending")
-        self.assessment = assessment
+        self.curr_phase = PhaseMap.get(self.patient.phase)
         self.BEGIN = False
 
+    @transaction.atomic
     def trigger_pipeline(self, user_response: str) -> str:
         formated_user_response = ConversationManager.format_msg(user_response)
         prev_decision_result = self.history_manager.get_last_decision()
+
+        assessment, _ = Assessment.objects.get_or_create(
+            patient=self.patient,
+            session=self.chat_session, # TODO
+            type=self.curr_phase.name,
+            status="pending"
+        )
+        self.assessment = assessment
 
         # eval chain
         eval_response = self.run_chain(
             data={
                 "input": formated_user_response,
-                "patient_metrics": json.dumps(self.get_assessment_progress()),
+                "patient_metrics": json.dumps(self.get_assessment_progress()), # TODO: remove this key; no longer needed
                 "decision_result": prev_decision_result,
             },
             mode="eval",
-            phase=self.phase.short_name
+            phase=self.curr_phase.short_name
         )
         interpretation_result = json.loads(eval_response.content)
-        self.BEGIN = interpretation_result["chat_status"] == ChatStates.BEGIN
+        self.BEGIN = interpretation_result["chat_status"] == ChatStates.BEGIN # TODO: remove
         # save temp record
         self.save_temp_record(interpretation_result)
 
-        if ChatStates.is_CONCLUDE(self):
-            interpretation_result["chat_status"] = ChatStates.CONCLUDE
-            # TODO:
+        if ChatStates.is_COMPLETE(self):
+            interpretation_result["chat_status"] = ChatStates.NORMAL
             # 1. Add chain to re-evaluate assessment and assign final scores
             score_data = self.run_chain(
                 data={
-                    "assessment_name": self.phase.verbose_name,
-                    "history": self.history_manager.get_full_list(),
+                    "assessment_name": self.curr_phase.verbose_name,
+                    "history": self.history_manager.get_full_list_from_session(),
                 },
                 mode="score",
-                phase=self.phase.short_name,
+                phase=self.curr_phase.short_name,
                 parse=True
             )
 
@@ -68,8 +72,8 @@ class SessionPipeline:
             self.write_final_records(score_data)
 
             # 2. Compute and assign total final score and severity (AssessmentResult)
-            severity = self.phase.severity(score_data)
-            total_score = self.phase.total_score(score_data)
+            severity = self.curr_phase.severity(score_data)
+            total_score = self.curr_phase.total_score(score_data)
             AssessmentResult.objects.create(
                 assessment=self.assessment,
                 score=total_score,
@@ -78,37 +82,58 @@ class SessionPipeline:
 
             # 3. Mark assessment as "completed"
             self.assessment.status = "completed"
-            self.assessment.save(update_fields=["status"])
+            self.assessment.completed_at = timezone.now()
+            self.assessment.save(update_fields=["status", "completed_at"])
 
             # 4. Update patient.phase to point to next phase (if any)
-            prev_phase = self.phase
+            prev_phase = self.curr_phase.verbose_name
+            end_session_flag = False
+            if self.curr_phase.name == PhaseMap.last(): # SESSION CONCLUDE state hit
+                # TODO: implement a session completion mechanism
+                # 1. reset phase to PhaseMap.first()
+                self.patient.phase = PhaseMap.first()
+                self.patient.save(update_fields=["phase"])
+                self.curr_phase = PhaseMap.get_first()
+                next_phase = "None" # no next phase in the current session
+                # 2. set end_session_flag to True to indicate session completion
+                end_session_flag = True
+
+                # 5. Add a conclude chain; invoke with new phase info; return response
+                conclude_response = self.run_chain(
+                    data={
+                        "input": formated_user_response,
+                        "prev_assessment_name": prev_phase,
+                        "next_assessment_name": next_phase,
+                    },
+                    mode="conclude",
+                    phase=None  # phase agnostic chain
+                )
+                conclude_result = json.loads(conclude_response.content)
+                response_to_user = conclude_result.get("response_to_user", "")
+
+                with transaction.atomic():
+                    msg = self.save_user_message(
+                        user_response, marker=interpretation_result)
+                    self.save_ai_message(
+                        msg,
+                        conclude_response,
+                        parse=True,
+                        marker=conclude_result
+                    )
+                
+                if end_session_flag:
+                    # TODO: implement a session completion mechanism
+                    pass
+                    self.chat_session.status = "closed"
+                    self.chat_session.save(update_fields=["status"])
+
+                return response_to_user
+            
+            # PHASE COMPLETION but not SESSION CONCLUDE state; move to next phase
             self.patient.phase = PhaseMap.next(self.patient.phase)
             self.patient.save(update_fields=["phase"])
-            self.phase = PhaseMap.get(self.patient.phase)
-
-            # 5. Add a conclude chain; invoke with new phase info; return response
-            conclude_response = self.run_chain(
-                data={
-                    "input": formated_user_response,
-                    "prev_assessment_name": prev_phase.verbose_name,
-                    "next_assessment_name": self.phase.verbose_name,
-                },
-                mode="conclude",
-                phase=None  # phase agnostic chain
-            )
-            conclude_result = json.loads(conclude_response.content)
-            response_to_user = conclude_result.get("response_to_user", "")
-
-            with transaction.atomic():
-                msg = self.save_user_message(
-                    user_response, marker=interpretation_result)
-                self.save_ai_message(
-                    msg,
-                    conclude_response,
-                    parse=True,
-                    marker=conclude_result
-                )
-            return response_to_user
+            self.curr_phase = PhaseMap.get(self.patient.phase)
+            next_phase = self.curr_phase.verbose_name
 
         # unevaluated metrics
         metrics = self.get_assessment_progress()
@@ -127,7 +152,7 @@ class SessionPipeline:
                 # replace `u_metrics` with random.choice(u_metrics)
             },
             mode="decision",
-            phase=self.phase.short_name
+            phase=self.curr_phase.short_name
         )
         decision_result = json.loads(decision_response.content)
         response_to_user = decision_result.get("response_to_user", "")
@@ -157,7 +182,7 @@ class SessionPipeline:
                 data,
                 config={"configurable": {"session_id": self.conversation_id}},
             )
-        elif mode == "score":
+        elif mode == "score": # scoring is done after assessment is completed; hence no user input
             chain = ChainStore.get(mode=mode, phase=phase)
             response: AIMessage = chain.invoke(input=data)
         if parse:
@@ -166,10 +191,14 @@ class SessionPipeline:
 
     def get_assessment_progress(self) -> dict:
         assessment, _ = Assessment.objects.get_or_create(
-            patient=self.patient, type=self.phase.name, status="pending")
+            patient=self.patient,
+            session=self.chat_session, # TODO
+            type=self.curr_phase.name,
+            status="pending"
+        )
 
         metrics = {}
-        for q_id in range(1, self.phase.N + 1):
+        for q_id in range(1, self.curr_phase.N + 1):
             record = AssessmentRecord.objects.filter(
                 assessment=assessment,
                 question_id=q_id
@@ -187,7 +216,7 @@ class SessionPipeline:
                 question_id=e["id"],
                 defaults={
                     "question_id": e["id"],
-                    "question_text": self.phase.get(e["id"]),
+                    "question_text": self.curr_phase.get(e["id"]),
                     "score": e["score"]
                 }
             )

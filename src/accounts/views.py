@@ -1,4 +1,3 @@
-from .serializers import UserSerializer
 from rest_framework import generics
 from django.contrib.auth import get_user_model, authenticate, logout
 from rest_framework import status
@@ -9,15 +8,16 @@ from rest_framework.authentication import TokenAuthentication
 from django.shortcuts import render, redirect
 from django.contrib.auth import login, authenticate
 from .forms import UserRegisterForm, UserLoginForm, PatientRegisterForm
-from .serializers import PasswordResetSerializer
+from .serializers import PasswordResetSerializer, UserRegisterSerializer
 from django.http import HttpResponseNotAllowed
-
+from rest_framework.authtoken.views import ObtainAuthToken
+from django.utils import timezone
 
 User = get_user_model()
 
 
 class RegisterView(generics.CreateAPIView):
-    serializer_class = UserSerializer
+    serializer_class = UserRegisterSerializer # role restrictions are enforced on the frontend
     queryset = User.objects.all()
 
 
@@ -33,6 +33,26 @@ class LogoutView(APIView):
             return Response({"detail": "Invalid request. No token found."}, status=status.HTTP_400_BAD_REQUEST)
 
 
+class LoginView(ObtainAuthToken):
+    """
+    Extends ObtainAuthToken class to update last_login field on successful token based login
+    """
+
+    def post(self, request, *args, **kwargs):
+        try:
+            response = super().post(request, *args, **kwargs)
+            user = self.serializer_class(data=request.data)
+            user.is_valid(raise_exception=True)
+            user = user.validated_data['user']
+            
+            user.last_login = timezone.now()
+            user.save(update_fields=['last_login'])
+
+            return response
+        except Exception as e:
+            return Response({'detail': f'{e.detail['non_field_errors'][0]}'}, status=status.HTTP_400_BAD_REQUEST)
+
+
 def register(request):
     if request.method == 'POST':
         form = UserRegisterForm(request.POST)
@@ -43,8 +63,10 @@ def register(request):
     else:
         user = request.user
         if user.is_authenticated and user.role == 'staff':
+            # Staff can register users with any role - staff, doctor, or patient
             form = UserRegisterForm()
         else:
+            # Anonymous users can only register as patients - to prevent abuse
             form = PatientRegisterForm()
     return render(request, 'accounts/register.html', {'form': form})
 

@@ -99,6 +99,22 @@ class Prompts:
                 include_human_input=False,
                 **kwargs
             ),
+            "monitoring.eval": lambda: BasePrompt(
+                system_init_message=PromptStore.MONITORING_INIT,
+                system_post_message=PromptStore.EVAL,
+                **kwargs
+            ),
+            "monitoring.decision": lambda: BasePrompt(
+                system_init_message=PromptStore.MONITORING_INIT,
+                system_post_message=PromptStore.DECISION,
+                **kwargs
+            ),
+            "monitoring.score": lambda: BasePrompt(
+                system_init_message=PromptStore.MONITORING_INIT,
+                system_post_message=PromptStore.SCORE,
+                include_human_input=False,
+                **kwargs
+            ),
             "conclude": lambda: BasePrompt(                 # phase agnostic chain
                 system_post_message=PromptStore.CONCLUDE,
                 **kwargs
@@ -189,6 +205,24 @@ class ChainStore:
         ChainBuilder()
         .with_model("gpt-4o")
         .with_prompt("gad7.score")
+        .build()
+    )
+    monitoring_eval_chain = (
+        ChainBuilder()
+        .with_model("gpt-4o")
+        .with_prompt("monitoring.eval")
+        .build()
+    )
+    monitoring_decision_chain = (
+        ChainBuilder()
+        .with_model("gpt-4o")
+        .with_prompt("monitoring.decision")
+        .build()
+    )
+    monitoring_score_chain = (
+        ChainBuilder()
+        .with_model("gpt-4o")
+        .with_prompt("monitoring.score")
         .build()
     )
     conclude_chain = (
