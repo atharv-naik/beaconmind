@@ -1,0 +1,67 @@
+version: "3.8"
+
+services:
+  db:
+    image: postgres:12
+    container_name: chatbot_db
+    restart: always
+    ports:
+      - "5432:5432"
+    secrets:
+      - db_password
+    environment:
+      POSTGRES_DB: chatbot_db
+      POSTGRES_USER: db_user
+      POSTGRES_PASSWORD_FILE: /run/secrets/db_password
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    networks:
+      - chatbot_network
+
+  web:
+    build: .
+    container_name: chatbot_app
+    restart: always
+    command: python manage.py migrate && gunicorn chatbot.wsgi:application --bind 0.0.0.0:8000
+    ports:
+      - "8000:8000"
+    depends_on:
+      - db
+    env_file: .env.prod
+    volumes:
+      - static_volume:/app/static
+    networks:
+      - chatbot_network
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.chatbot.rule=Host(`web.docker.localhost`)"
+      - "traefik.http.services.chatbot.loadbalancer.server.port=8000"
+
+  traefik:
+    image: traefik:v3.3
+    container_name: traefik_proxy
+    restart: always
+    command:
+      - "--api.insecure=true"
+      - "--providers.docker=true"
+      - "--api.dashboard=true"
+      - "--entrypoints.web.address=:80"
+    ports:
+      - "80:80"
+      - "8080:8080" # Dashboard
+    volumes:
+      - "/var/run/docker.sock:/var/run/docker.sock:ro"
+    networks:
+      - chatbot_network
+
+volumes:
+  postgres_data:
+  static_volume:
+
+secrets:
+  db_password:
+    file: db/secrets.txt
+
+networks:
+  chatbot_network:
+    driver: bridge
