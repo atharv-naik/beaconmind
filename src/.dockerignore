@@ -5,5 +5,7 @@ __pycache__
 venv/
 env/
 *.sqlite3
-.env
+.*env**
 static/
+**secrets**
+logs/

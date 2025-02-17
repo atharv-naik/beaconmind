@@ -3,7 +3,7 @@ from django.contrib.auth.admin import UserAdmin
 from django.utils.translation import gettext_lazy as _
 from .models import User, Doctor, Patient
 
-admin.site.site_header = 'Patient Monitoring Chatbot Admin'
+admin.site.site_header = 'Beacon Admin'
 admin.site.site_title = 'Admin Portal'
 admin.site.index_title = 'Welcome to the Admin Portal'
 

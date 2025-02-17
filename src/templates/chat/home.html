@@ -586,7 +586,7 @@
       const accountMenu = document.querySelector(".account-menu");
       const collapsable = document.querySelector(".collapsable");
       const csrftoken = getCookie("csrftoken");
-      const URLRoot = "http://localhost:8000/";
+      const URLRoot = document.location.origin + "/";
       const URL = `${URLRoot}chat/api/`;
 
       function getCookie(name) {
@@ -891,7 +891,11 @@
         }
       });
 
-      window.addEventListener("DOMContentLoaded", fetchChatHistory);
+      if (document.readyState === "loading") {
+        window.addEventListener("DOMContentLoaded", fetchChatHistory);
+      } else {
+        fetchChatHistory();
+      }
     </script>
   </body>
 </html>
