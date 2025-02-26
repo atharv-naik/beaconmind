@@ -24,7 +24,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 WORKDIR /app
 
 # Create a non-root user
-RUN addgroup -S afmw && adduser -S afmw -G afmw
+RUN addgroup -S beaconmind && adduser -S beaconmind -G beaconmind
 
 # Copy only the installed Python dependencies from the builder stage
 COPY --from=builder /install /usr/local
@@ -32,11 +32,8 @@ COPY --from=builder /install /usr/local
 # Copy application code
 COPY . .
 
-# Collect static files
-RUN python manage.py collectstatic --noinput
-
-# Set permissions and create necessary directories
-RUN mkdir -p logs && chown -R afmw:afmw /app
+# Create a logs directory, collect static files, and change the owner of the app directory
+RUN mkdir -p logs && python manage.py collectstatic --noinput && chown -R beaconmind:beaconmind /app
 
 # Switch to the non-root user
-USER afmw
+USER beaconmind

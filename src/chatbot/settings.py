@@ -164,12 +164,12 @@ LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
     'formatters': {
-        'verbose': {
+        'file_verbose': {
             'format': '{levelname} {asctime} {module} {message}',
             'style': '{',
         },
-        'simple': {
-            'format': '{levelname} {message}',
+        'console_simple': {
+            'format': '{levelname}: {message}',
             'style': '{',
         },
     },
@@ -178,23 +178,23 @@ LOGGING = {
             'level': 'WARNING',
             'class': 'logging.FileHandler',
             'filename': BASE_DIR / 'logs/django.log',
-            'formatter': 'verbose',
+            'formatter': 'file_verbose',
         },
         'console': {
-            'level': 'DEBUG',
+            'level': 'WARNING',
             'class': 'logging.StreamHandler',
-            'formatter': 'simple',
+            'formatter': 'console_simple',
         },
         'mail_admins': {
             'level': 'ERROR',
             'class': 'django.utils.log.AdminEmailHandler',
-            'formatter': 'verbose',
+            'formatter': 'file_verbose',
         },
     },
     'loggers': {
         'django': {
             'handlers': ['file', 'console'],
-            'level': 'DEBUG',
+            'level': 'WARNING',
             'propagate': True,
         },
         'django.request': {
