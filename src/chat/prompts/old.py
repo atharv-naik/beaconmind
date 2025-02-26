@@ -1,3 +1,8 @@
+"""
+Old prompts store. Would be discontinued soon.
+"""
+
+
 import textwrap
 
 
@@ -309,3 +314,30 @@ example output: {
 }
         """
     ) + Meta.IMPORTANT + Meta.CHAT_STATUS_INFO
+
+
+
+    class DEC:
+        begin = textwrap.dedent(
+            """
+            """
+        )
+        drift = textwrap.dedent(
+            """
+            """
+        )
+        ambiguous = textwrap.dedent(
+            """
+            """
+        )
+        normal = textwrap.dedent(
+            """
+            """
+        )
+        conclude = textwrap.dedent(
+            """
+            """
+        )
+    
+    
+

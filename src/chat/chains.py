@@ -1,9 +1,11 @@
+from typing import Union
 from langchain_community.chat_models.ollama import ChatOllama
 from langchain_core.language_models.chat_models import BaseChatModel
-from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder
+from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder, PromptTemplate
 from langchain_openai.chat_models import ChatOpenAI
 
-from .prompts import PromptStore
+from .prompts.old import PromptStore
+from . import prompts
 
 
 class Models:
@@ -24,26 +26,37 @@ class Models:
 
             # Add more models as needed
         }
-        return model_map.get(model_name, lambda: None)()
+        if model_name not in model_map:
+            raise ValueError(f"Model '{model_name}' is not recognized. Available models: {list(model_map.keys())}")
+
+        return model_map[model_name]()
 
 
 class BasePrompt:
 
     def __init__(
         self,
+        template=None,
         system_init_message=None,
         human_message="{input}",
         system_post_message=None,
         include_history=True,
         include_human_input=True,
+        **kwargs
     ):
+        self.template = template
         self.system_init_message = system_init_message
         self.human_message = human_message
         self.system_post_message = system_post_message
         self.include_history = include_history
         self.include_human_input = include_human_input
+        self.kwargs = kwargs
 
-    def create_prompt(self) -> ChatPromptTemplate:
+    def create_prompt(self, **kwargs) -> Union[ChatPromptTemplate, PromptTemplate]:
+        self.kwargs.update(kwargs)
+        if self.template:
+            return PromptTemplate.from_template(self.template, **self.kwargs)
+
         messages = []
 
         if self.system_init_message:
@@ -55,7 +68,7 @@ class BasePrompt:
         if self.system_post_message:
             messages.append(("system", self.system_post_message))
 
-        return ChatPromptTemplate.from_messages(messages)
+        return ChatPromptTemplate.from_messages(messages, **self.kwargs)
 
 
 class Prompts:
@@ -64,63 +77,82 @@ class Prompts:
     def get(prompt_type, **kwargs) -> ChatPromptTemplate:
         prompts_map = {
             "test": lambda: BasePrompt(
-                system_init_message="You are a helpful virtual assistant.",
-                **kwargs
+                system_init_message="You are a helpful virtual assistant."
             ),
             "phq9.eval": lambda: BasePrompt(
                 system_init_message=PromptStore.PHQ9_INIT,
-                system_post_message=PromptStore.EVAL,
-                **kwargs
+                system_post_message=PromptStore.EVAL
             ),
             "phq9.decision": lambda: BasePrompt(
                 system_init_message=PromptStore.PHQ9_INIT,
-                system_post_message=PromptStore.DECISION,
-                **kwargs
+                system_post_message=PromptStore.DECISION
             ),
             "phq9.score": lambda: BasePrompt(
                 system_init_message=PromptStore.PHQ9_INIT,
                 system_post_message=PromptStore.SCORE,
-                include_human_input=False,
-                **kwargs
+                include_human_input=False
             ),
             "gad7.eval": lambda: BasePrompt(
                 system_init_message=PromptStore.GAD7_INIT,
-                system_post_message=PromptStore.EVAL,
-                **kwargs
+                system_post_message=PromptStore.EVAL
             ),
             "gad7.decision": lambda: BasePrompt(
                 system_init_message=PromptStore.GAD7_INIT,
-                system_post_message=PromptStore.DECISION,
-                **kwargs
+                system_post_message=PromptStore.DECISION
             ),
             "gad7.score": lambda: BasePrompt(
                 system_init_message=PromptStore.GAD7_INIT,
                 system_post_message=PromptStore.SCORE,
-                include_human_input=False,
-                **kwargs
+                include_human_input=False
             ),
             "monitoring.eval": lambda: BasePrompt(
                 system_init_message=PromptStore.MONITORING_INIT,
-                system_post_message=PromptStore.EVAL,
-                **kwargs
+                system_post_message=PromptStore.EVAL
             ),
             "monitoring.decision": lambda: BasePrompt(
                 system_init_message=PromptStore.MONITORING_INIT,
-                system_post_message=PromptStore.DECISION,
-                **kwargs
+                system_post_message=PromptStore.DECISION
             ),
             "monitoring.score": lambda: BasePrompt(
                 system_init_message=PromptStore.MONITORING_INIT,
                 system_post_message=PromptStore.SCORE,
-                include_human_input=False,
-                **kwargs
+                include_human_input=False
             ),
             "conclude": lambda: BasePrompt(                 # phase agnostic chain
-                system_post_message=PromptStore.CONCLUDE,
-                **kwargs
+                system_post_message=PromptStore.CONCLUDE
+            ),
+            
+
+            # New prompts
+            "dec.init": lambda: BasePrompt(
+                template=prompts.dec.init
+            ),
+            "dec.normal": lambda: BasePrompt(
+                template=prompts.dec.normal
+            ),
+            "dec.ambiguous": lambda: BasePrompt(
+                template=prompts.dec.ambiguous
+            ),
+            "dec.drift": lambda: BasePrompt(
+                template=prompts.dec.drift
+            ),
+            "dec.clarify": lambda: BasePrompt(
+                template=prompts.dec.clarify
+            ),
+            "dec.skipped": lambda: BasePrompt(
+                template=prompts.dec.skipped
+            ),
+            "dec.conclude": lambda: BasePrompt(
+                template=prompts.dec.conclude
+            ),
+            "eval": lambda: BasePrompt(
+                template=prompts.eval
+            ),
+            "score": lambda: BasePrompt(
+                template=prompts.score
             ),
         }
-        return prompts_map.get(prompt_type, lambda: None)().create_prompt()
+        return prompts_map.get(prompt_type, lambda: None)().create_prompt(**kwargs)
 
 
 class ChainBuilder:
@@ -229,6 +261,63 @@ class ChainStore:
         ChainBuilder()
         .with_model("gpt-4o")
         .with_prompt("conclude")
+        .build()
+    )
+
+
+    # New chains
+    dec_init_chain = (
+        ChainBuilder()
+        .with_model("gpt-4o")
+        .with_prompt("dec.init")
+        .build()
+    )
+    dec_normal_chain = (
+        ChainBuilder()
+        .with_model("gpt-4o")
+        .with_prompt("dec.normal")
+        .build()
+    )
+    dec_ambiguous_chain = (
+        ChainBuilder()
+        .with_model("gpt-4o")
+        .with_prompt("dec.ambiguous")
+        .build()
+    )
+    dec_drift_chain = (
+        ChainBuilder()
+        .with_model("gpt-4o")
+        .with_prompt("dec.drift")
+        .build()
+    )
+    dec_clarify_chain = (
+        ChainBuilder()
+        .with_model("gpt-4o")
+        .with_prompt("dec.clarify")
+        .build()
+    )
+    dec_skipped_chain = (
+        ChainBuilder()
+        .with_model("gpt-4o")
+        .with_prompt("dec.skipped")
+        .build()
+    )
+    dec_conclude_chain = (
+        ChainBuilder()
+        .with_model("gpt-4o")
+        .with_prompt("dec.conclude")
+        .build()
+    )
+    eval_chain = (
+        ChainBuilder()
+        .with_model("gpt-4o")
+        .with_prompt("eval")
+        .build()
+    )
+    score_chain = (
+        ChainBuilder()
+        .with_model("gpt-4o")
+        .with_prompt("score")
         .build()
     )
     

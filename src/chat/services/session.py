@@ -1,12 +1,13 @@
 import json
-from typing import Dict, Union
 
 from django.db import transaction
+from django.db.models import Q
 from django.utils import timezone
 from langchain_core.messages.ai import AIMessage
 from langchain_core.runnables.history import RunnableWithMessageHistory
 
-from assessments.definitions import PhaseMap
+from assessments import definitions
+from assessments.definitions import PhaseMap, BaseAssessmentPhase
 from assessments.models import Assessment, AssessmentRecord, AssessmentResult
 
 from ..chains import ChainStore
@@ -19,261 +20,362 @@ class SessionPipeline:
 
     def __init__(self, conversation: Conversation, chat_session: ChatSession = None):
         self.conversation = conversation
-        self.conversation_id = conversation.id
-        self.chat_session = chat_session
+        self.session = chat_session
         self.history_manager = HistoryManager(
-            self.conversation, self.chat_session)
+            self.conversation, self.session)
         self.patient = conversation.user.patient
-        self.curr_phase = PhaseMap.get(self.patient.phase)
-        self.BEGIN = False
 
+
+        self.curr_phase = PhaseMap.get(self.session.phase)
+        self.curr_node = self.curr_phase.get(self.session.node_id)
+        self.chat_status = ChatStates.NORMAL
+
+    # new code //////////////////////////////////
     @transaction.atomic
-    def trigger_pipeline(self, user_response: str) -> str:
-        formated_user_response = ConversationManager.format_msg(user_response)
-        prev_decision_result = self.history_manager.get_last_decision()
+    def trigger_pipeline(self, user_msg: str) -> str:
+        user_msg_f = ConversationManager.format_msg(user_msg)
+        user_msg_timestamp = timezone.now()
 
-        assessment, _ = Assessment.objects.get_or_create(
-            patient=self.patient,
-            session=self.chat_session, # TODO
-            type=self.curr_phase.name,
-            status="pending"
+        meta = {}
+
+        meta["eval"] = {"meta": {}}
+
+        user_marker = {
+            "phase": self.curr_phase.name,
+            "init": self.session.init,
+        }
+
+        ic()
+
+        msg = ChatMessage.objects.create(
+            user_response=user_msg.strip(),
+            conversation=self.conversation,
+            chat_session=self.session,
+            user_response_timestamp=user_msg_timestamp,
+            user_marker=user_marker,
+            meta_data=meta
         )
-        self.assessment = assessment
 
-        # eval chain
-        eval_response = self.run_chain(
-            data={
-                "input": formated_user_response,
-                "patient_metrics": json.dumps(self.get_assessment_progress()), # TODO: remove this key; no longer needed
-                "decision_result": prev_decision_result,
-            },
-            mode="eval",
-            phase=self.curr_phase.short_name
-        )
-        interpretation_result = json.loads(eval_response.content)
-        self.BEGIN = interpretation_result["chat_status"] == ChatStates.BEGIN # TODO: remove
-        # save temp record
-        self.save_temp_record(interpretation_result)
+        ic()
 
-        if ChatStates.is_COMPLETE(self):
-            interpretation_result["chat_status"] = ChatStates.NORMAL
-            # 1. Add chain to re-evaluate assessment and assign final scores
-            score_data = self.run_chain(
-                data={
-                    "assessment_name": self.curr_phase.verbose_name,
-                    "history": self.history_manager.get_full_list_from_session(),
-                },
-                mode="score",
-                phase=self.curr_phase.short_name,
-                parse=True
+        if self.session.init:
+
+            ic()
+
+            response = self.run_dec_routine(
+                msg, user_msg_f, ChatStates.INIT
             )
 
-            # overwrite AssessmentRecords with final scores
-            self.write_final_records(score_data)
-
-            # 2. Compute and assign total final score and severity (AssessmentResult)
-            severity = self.curr_phase.severity(score_data)
-            total_score = self.curr_phase.total_score(score_data)
-            AssessmentResult.objects.create(
-                assessment=self.assessment,
-                score=total_score,
-                severity=severity
-            )
-
-            # 3. Mark assessment as "completed"
-            self.assessment.status = "completed"
-            self.assessment.completed_at = timezone.now()
-            self.assessment.save(update_fields=["status", "completed_at"])
-
-            # 4. Update patient.phase to point to next phase (if any)
-            prev_phase = self.curr_phase.verbose_name
-            end_session_flag = False
-            if self.curr_phase.name == PhaseMap.last(): # SESSION CONCLUDE state hit
-                # TODO: implement a session completion mechanism
-                # 1. reset phase to PhaseMap.first()
-                self.patient.phase = PhaseMap.first()
-                self.patient.save(update_fields=["phase"])
-                self.curr_phase = PhaseMap.get_first()
-                next_phase = "None" # no next phase in the current session
-                # 2. set end_session_flag to True to indicate session completion
-                end_session_flag = True
-
-                # 5. Add a conclude chain; invoke with new phase info; return response
-                conclude_response = self.run_chain(
-                    data={
-                        "input": formated_user_response,
-                        "prev_assessment_name": prev_phase,
-                        "next_assessment_name": next_phase,
-                    },
-                    mode="conclude",
-                    phase=None  # phase agnostic chain
-                )
-                conclude_result = json.loads(conclude_response.content)
-                response_to_user = conclude_result.get("response_to_user", "")
-
-                with transaction.atomic():
-                    msg = self.save_user_message(
-                        user_response, marker=interpretation_result)
-                    self.save_ai_message(
-                        msg,
-                        conclude_response,
-                        parse=True,
-                        marker=conclude_result
-                    )
-                
-                if end_session_flag:
-                    # TODO: implement a session completion mechanism
-                    pass
-                    self.chat_session.status = "closed"
-                    self.chat_session.save(update_fields=["status"])
-
-                return response_to_user
+        else:
             
-            # PHASE COMPLETION but not SESSION CONCLUDE state; move to next phase
-            self.patient.phase = PhaseMap.next(self.patient.phase)
-            self.patient.save(update_fields=["phase"])
-            self.curr_phase = PhaseMap.get(self.patient.phase)
-            next_phase = self.curr_phase.verbose_name
+            msg = self.run_eval_routine(msg, user_msg_f)
 
-        # unevaluated metrics
-        metrics = self.get_assessment_progress()
-        u_metrics = [k for k, v in metrics.items() if v == -1]
-
-        # decision chain
-        decision_response = self.run_chain(
-            data={
-                "input": formated_user_response,
-                "u_metrics": str(u_metrics),
-                "evaluation": json.dumps(interpretation_result),
-                "prev_decision_result": prev_decision_result,
-
-                # TODO: below changes might improve control & stability of chat
-                # replace `evaluation` key with interpretation_result["chat_status"]
-                # replace `u_metrics` with random.choice(u_metrics)
-            },
-            mode="decision",
-            phase=self.curr_phase.short_name
-        )
-        decision_result = json.loads(decision_response.content)
-        response_to_user = decision_result.get("response_to_user", "")
-
-        with transaction.atomic():
-            msg = self.save_user_message(
-                user_response, marker=interpretation_result)
-            self.save_ai_message(
-                msg,
-                decision_response,
-                parse=True,
-                marker=decision_result
+            response = self.run_dec_routine(
+                msg, user_msg_f, self.chat_status
             )
-        return response_to_user
+        
+        ic()
 
-    def run_chain(self, data: dict, mode, phase=None, parse=False) -> Union[AIMessage, Dict]:
-        if mode in ["eval", "decision", "conclude"]:
-            assert "input" in data, "Input key is required"
-
-            chain = RunnableWithMessageHistory(
-                ChainStore.get(mode=mode, phase=phase),
-                self.history_manager.get_full,
-                input_messages_key="input",
-                history_messages_key="history",
-            )
-            response: AIMessage = chain.invoke(
-                data,
-                config={"configurable": {"session_id": self.conversation_id}},
-            )
-        elif mode == "score": # scoring is done after assessment is completed; hence no user input
-            chain = ChainStore.get(mode=mode, phase=phase)
-            response: AIMessage = chain.invoke(input=data)
-        if parse:
-            response = json.loads(response.content)
         return response
 
-    def get_assessment_progress(self) -> dict:
-        assessment, _ = Assessment.objects.get_or_create(
-            patient=self.patient,
-            session=self.chat_session, # TODO
-            type=self.curr_phase.name,
-            status="pending"
+
+    def run_eval_routine(self, msg: ChatMessage, user_msg: str) -> str:
+        """
+        Method to run the evaluation routine
+        """
+
+        ic()
+
+        user_msg = user_msg.strip()
+
+        # invoke eval chain
+        ic()
+        eval_response = ChainStore.eval_chain.invoke(
+            input={
+                "message": user_msg,
+                "phase": self.curr_phase.verbose_name,
+                "question_original": self.curr_node.text,
+                "question": self.session.last_msg,
+                "conversation": self.history_manager.get_full_list_from_session(),
+            }
         )
 
-        metrics = {}
-        for q_id in range(1, self.curr_phase.N + 1):
-            record = AssessmentRecord.objects.filter(
-                assessment=assessment,
-                question_id=q_id
-            ).order_by('-timestamp').first()
-            if record:
-                metrics[q_id] = record.score
+        ic()
+
+        eval_meta = eval_response.response_metadata
+        meta = {
+            "eval": {
+                "meta": eval_meta,
+            }
+        }
+
+        ic()
+
+        state = json.loads(eval_response.content)["response"]
+
+        ic()
+
+        assert state in [
+            "NORMAL_y", 
+            "NORMAL_n", 
+            "DRIFT", 
+            "AMBIGUOUS", 
+            "CLARIFY"
+        ], f"Invalid state: {state} returned by eval chain"
+
+        ic()
+
+        if state in ["NORMAL_y", "NORMAL_n"]: 
+            
+            self.chat_status = ChatStates.NORMAL
+            tr = state[-1]
+
+            # reset retries set by earlier states
+            self.session.retries = 0
+            self.session.save(update_fields=["retries"])
+
+            ic()
+        else: 
+            if state in ["DRIFT", "AMBIGUOUS"]:
+                self.chat_status = getattr(ChatStates, state)
+
+                tr = "o"
+
+                # increment retries
+                self.session.retries += 1
+                self.session.save(update_fields=["retries"])
+
+                ic()
             else:
-                metrics[q_id] = -1
-        return metrics
+                self.chat_status = ChatStates.CLARIFY
 
-    def save_temp_record(self, data: dict):
-        if e := data.get("evaluation"):
-            AssessmentRecord.objects.update_or_create(
-                assessment=self.assessment,
-                question_id=e["id"],
-                defaults={
-                    "question_id": e["id"],
-                    "question_text": self.curr_phase.get(e["id"]),
-                    "score": e["score"]
-                }
-            )
+                tr = "c"
 
-    def write_final_records(self, data: dict):
-        records = AssessmentRecord.objects.filter(
-            assessment=self.assessment).order_by('question_id')
-        for record in records:
-            data_dict = data[str(record.question_id)]
-            record.dirty = record.score != data_dict["score"]
-            record.score = data_dict["score"]
-            record.remark = data_dict["remark"]
-            record.snippet = data_dict["snippet"]
-            record.keywords = data_dict.get("keywords", [])
-            record.save(
-                update_fields=[
-                    "score",
-                    "remark",
-                    "snippet",
-                    "keywords",
-                    "dirty"
-                ]
-            )
+                # reset retries set by earlier states
+                self.session.retries = 0
+                self.session.save(update_fields=["retries"])
 
-    def save_user_message(self, user_response: str, marker: dict = {}) -> ChatMessage:
-        msg = ChatMessage.objects.create(
-            user_response=user_response,
-            conversation=self.conversation,
-            chat_session=self.chat_session,
-            user_response_timestamp=timezone.now(),
-            user_marker=marker
-        )
+                ic()
+
+        ic()
+
+        user_marker = {
+            "phase": self.curr_phase.name,
+            "init": False,
+            "question": self.curr_node.text,
+            "node_id": self.curr_node.node_id,
+            "tr": tr,
+        }
+
+        ic()
+
+        # transition to next node if any
+        next_node = self.curr_phase.next_q(node_id=self.session.node_id, tr=tr, r=self.session.retries)
+
+        # IMPORTANT set chat_status to SKIPPED if retries exceed limit set for the node
+        # else the dec chains would be out of sync with the current state
+        if self.session.retries > self.curr_node.r:
+            ic(self.session.retries, self.curr_node.r)
+            self.chat_status = ChatStates.SKIPPED
+            
+            # reset retries
+            self.session.retries = 0
+            self.session.save(update_fields=["retries"])
+
+        ic()
+
+        if next_node == definitions.END:
+
+            # SCORING HAPPENS HERE ///////////////////////////////////////
+            ic()
+            if self.curr_phase.supports_scoring:
+                self.run_score_routine(self.curr_phase)
+            ic()
+
+            # check for next phase
+            next_phase = PhaseMap.next(self.session.phase)
+
+            if next_phase == definitions.END:
+                # enter CONCLUDE state
+                self.chat_status = ChatStates.CONCLUDE
+            else:
+                assert self.chat_status in [ChatStates.NORMAL, ChatStates.SKIPPED], f"Invalid chat status: {self.chat_status} for phase transition tr={tr}"
+
+                # update session phase
+                self.session.phase = next_phase
+                self.session.node_id = PhaseMap.get(next_phase).base_node_id
+                self.session.retries = 0
+                self.session.save(update_fields=["phase", "node_id", "retries"])
+
+                self.curr_phase = PhaseMap.get(self.session.phase)
+                self.curr_node = self.curr_phase.get(self.session.node_id)
+
+        else:
+            # update session node
+            self.session.node_id = next_node.node_id
+            self.session.save(update_fields=["node_id"])
+
+            ic()
+
+            try:
+                self.curr_node = self.curr_phase.get(self.session.node_id)
+            except Exception as e:
+                ic(e)
+                raise Exception(f"{e}")
+
+            ic()
+
+        # save message
+        ic()
+
+        msg.user_marker.update(user_marker)
+        msg.meta_data.update(meta)
+        msg.save(update_fields=["user_marker", "meta_data"])
+
+        ic()
+
         return msg
 
-    @staticmethod
-    def save_ai_message(
-        chat_message: ChatMessage,
-        ai_response: AIMessage,
-        parse: bool = True,
-        marker: dict = {}
-    ) -> ChatMessage:
-        if parse:
-            content = json.loads(ai_response.content)
-            chat_message.ai_response = content.get("response_to_user", "")
-        else:
-            chat_message.ai_response = ai_response.content
-        chat_message.meta_data = ai_response.response_metadata
-        chat_message.ai_response_timestamp = timezone.now()
 
-        marker.pop("response_to_user", None)
-        chat_message.ai_marker = marker
-        chat_message.save(
+    def run_dec_routine(self, msg: ChatMessage, user_msg: str, chat_state: str) -> str:
+        """
+        Method to run the decision routine at a given chat_state
+        """
+
+        # invoke dec.{state} chain
+        ic()
+        try:
+            dec_response = getattr(ChainStore, f"dec_{chat_state.lower()}_chain").invoke(
+                input={
+                    "message": user_msg.strip(),
+                    "phase": self.curr_phase.verbose_name,
+                    "question": self.curr_node.text,
+                    "conversation": self.history_manager.get_full_list(),
+                }
+            )
+        except Exception as e:
+            ic(e)
+            raise Exception(f"Error invoking dec_{chat_state.lower()}_chain")
+        ic()
+        ic(dec_response.content)
+        ic(json.loads(dec_response.content))
+        ic(json.loads(dec_response.content)["response"])
+        response = json.loads(dec_response.content).get("response", "")
+        dec_meta = dec_response.response_metadata
+        meta = {
+            "dec": {
+                "type": chat_state.lower(),
+                "meta": dec_meta,
+            }
+        }
+        ai_marker = {
+            "phase": self.curr_phase.name,
+            "question": self.curr_node.text,
+            "node_id": self.curr_node.node_id,
+            "chat_status": chat_state,
+        }
+
+        ic()
+
+        # save message
+        msg.ai_response = response
+        msg.ai_response_timestamp = timezone.now()
+        msg.ai_marker = ai_marker
+        msg.meta_data.update(meta)
+        msg.save(
             update_fields=[
                 "ai_response",
-                "meta_data",
                 "ai_response_timestamp",
                 "ai_marker",
+                "meta_data",
             ]
         )
-        return chat_message
+
+        ic()
+
+        try:
+            self.session.last_msg = response
+            self.session.init = False
+            self.session.save(update_fields=["init", "last_msg"])
+        except Exception as e:
+            ic(e)
+
+        ic()
+
+        if chat_state == ChatStates.CONCLUDE:
+            self.session.status = "closed"
+            self.session.save(update_fields=["status"])
+
+        return response
+    
+    def run_score_routine(self, phase: BaseAssessmentPhase) -> None:
+        """
+        Method to run the scoring routine
+        """
+        ic()
+        qs = self.history_manager.filter_by(
+            Q(chat_session_id=self.session.id),
+            Q(ai_marker__phase=phase.name) | Q(user_marker__phase=phase.name)
+        )
+        ic()
+        # invoke the score chain
+        try:
+            score_response = ChainStore.score_chain.invoke(
+                input={
+                    "phase": phase.verbose_name,
+                    "questions_json": json.dumps(phase.get_questions_dict()),
+                    "conversation_json": json.dumps(self.history_manager.qs_to_dict(qs)),
+                }
+            )
+        except Exception as e:
+            ic(e)
+            raise Exception("Error invoking score_chain")
+        ic()
+        score_meta = score_response.response_metadata
+        meta = {
+            "score": {
+                "meta": score_meta,
+            }
+        }
+        ic()
+        data = json.loads(score_response.content)["response"]
+
+        # save assessment records
+        assessment = Assessment.objects.create(
+            patient=self.patient,
+            session=self.session,
+            type=phase.name,
+        )
+        ic()
+        q_data = phase.get_questions_dict()
+        for qid, record in data.items():
+            AssessmentRecord.objects.create(
+                assessment=assessment,
+                question_id=qid,
+                question_text=q_data[qid]["text"],
+                score=record["score"],
+                remark=record["remark"],
+                snippet=record["snippet"],
+                keywords=record["keywords"],
+            )
+        ic()
+        # save assessment result
+        try:
+            score = phase.total_score(data)
+            severity = phase.severity(data)
+            AssessmentResult.objects.create(
+                assessment=assessment,
+                score=score,
+                severity=severity,
+            )
+        except Exception as e:
+            ic(e)
+            raise Exception(f"Error saving assessment result")
+        ic()
+        assessment.status = "completed"
+        assessment.completed_at = timezone.now()
+        assessment.save(update_fields=["status", "completed_at"])
+        ic()
+        return
+
+

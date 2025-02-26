@@ -22,7 +22,7 @@ class ConversationAdmin(admin.ModelAdmin):
 
 @admin.register(ChatMessage)
 class ChatMessageAdmin(admin.ModelAdmin):
-    list_display = ('conversation', 'chat_session', 'user_response_excerpt',
+    list_display = ('conversation', 'chat_session', 'phase', 'user_response_excerpt',
                     'ai_response_excerpt', 'timestamp')
     search_fields = ('user_response', 'ai_response',
                      'conversation__user__username')
@@ -56,11 +56,21 @@ class ChatMessageAdmin(admin.ModelAdmin):
         return 'No Response'
     ai_response_excerpt.short_description = 'AI Response Excerpt'
 
+    def phase(self, obj):
+        p1 = obj.user_marker.get('phase', '-').split('.')[-1].upper()
+        p2 = obj.ai_marker.get('phase', '-').split('.')[-1].upper()
+        if p1 != p2:
+            p = "->".join([p1, p2])
+        else:
+            p = p1
+        return p
+    phase.short_description = 'Phase (p1->p2)'
+
 
 @admin.register(ChatSession)
 class ChatSessionAdmin(admin.ModelAdmin):
     list_display = ('conversation', 'total_messages',
-                    'timestamp', 'session_duration')
+                    'timestamp', 'session_duration', 'status', 'phase')
     search_fields = ('conversation__user__username',)
     readonly_fields = ('id', 'conversation', 'timestamp')
     list_filter = ('timestamp',)

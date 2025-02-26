@@ -9,6 +9,7 @@
     <title>Chat Interface</title>
     <link rel="manifest" href="{% url 'manifest' %}">
     <script src="{% url 'serviceworker' %}"></script>
+    <script src="https://cdn.jsdelivr.net/npm/showdown@1.9.1/dist/showdown.min.js"></script>
     <style>
       *,
       *::before,
@@ -121,6 +122,9 @@
       .msg-content span {
         white-space: pre-wrap;
         line-height: 1.5rem;
+      }
+      .msg-content span ol {
+        padding-inline-start: 20px;
       }
       .ai-message {
         background-color: inherit;
@@ -589,6 +593,8 @@
       const URLRoot = "http://localhost:8000/";
       const URL = `${URLRoot}chat/api/`;
 
+      const converter = new showdown.Converter();
+
       function getCookie(name) {
         let cookieValue = null;
         if (document.cookie && document.cookie !== "") {
@@ -638,6 +644,8 @@
           "message",
           sender === "user" ? "user-message" : "ai-message"
         );
+
+        text = converter.makeHtml(text);
         messageDiv.innerHTML = /*html*/ `
                 <div class="msg-content">
                     <span>${text}</span>

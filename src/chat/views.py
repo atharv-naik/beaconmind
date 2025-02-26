@@ -14,6 +14,8 @@ def home(request):
     return render(request, 'chat/home.html')
 
 
+
+
 @api_view(['POST', 'GET'])
 @authentication_classes([SessionAuthentication, TokenAuthentication])
 @permission_classes([IsAuthenticated])

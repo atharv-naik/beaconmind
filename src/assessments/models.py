@@ -3,7 +3,7 @@ from shortuuid.django_fields import ShortUUIDField
 
 from accounts.models import Patient
 from chat.models import ChatSession
-from assessments.definitions import PHQ9Phase, GAD7Phase, MonitoringPhase
+from assessments.definitions import PHQ9Phase, GAD7Phase, MonitoringPhase, ASQPhase
 
 
 class Assessment(models.Model):
@@ -11,6 +11,7 @@ class Assessment(models.Model):
         (PHQ9Phase().name, PHQ9Phase().verbose_name),
         (GAD7Phase().name, GAD7Phase().verbose_name),
         (MonitoringPhase().name, MonitoringPhase().verbose_name),
+        (ASQPhase().name, ASQPhase().verbose_name),
     )
     _status = (
         ('pending', 'Pending'),

@@ -44,6 +44,13 @@ class ChatSession(models.Model):
     status = models.CharField(max_length=10, choices=_status, default='open')
     timestamp = models.DateTimeField(auto_now_add=True, editable=True)
 
+    # state information
+    init = models.BooleanField(verbose_name="INIT", default=False)
+    phase = models.CharField(max_length=30, null=True, default=None)
+    node_id = models.CharField("Question Node ID", max_length=10, null=True, default=None)
+    retries = models.IntegerField(default=0)
+    last_msg = models.TextField("Last Message", null=True, default=None)
+
     class Meta:
         ordering = ['timestamp']
         verbose_name = 'Chat Session'
