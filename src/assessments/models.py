@@ -32,7 +32,7 @@ class Assessment(models.Model):
 class AssessmentRecord(models.Model):
     id = ShortUUIDField(primary_key=True, prefix='rec_')
     assessment = models.ForeignKey(Assessment, related_name='records', on_delete=models.CASCADE)
-    question_id = models.IntegerField()
+    question_id = models.CharField(max_length=10, null=True, default=None)
     question_text = models.CharField(max_length=255, default='')
     score = models.IntegerField()
     timestamp = models.DateTimeField(auto_now_add=True)

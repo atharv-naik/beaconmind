@@ -27,7 +27,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-l9zh=bozp&nhe)_p7e_8=(upicts0d)86tn_-fv9_-dy6b1sqz'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = False
 
 ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS').split(',')
 
@@ -41,11 +41,14 @@ INSTALLED_APPS = [
     'django.contrib.contenttypes',
     'django.contrib.sessions',
     'django.contrib.messages',
+    'whitenoise.runserver_nostatic',
     'django.contrib.staticfiles',
     'rest_framework',
     'rest_framework.authtoken',
-    'crispy_forms',
-    'crispy_bootstrap5',
+    'crispy_forms', # TODO: remove
+    'crispy_bootstrap5', # TODO: remove
+    'phonenumber_field',
+    'django_recaptcha',
     'accounts',
     'assessments',
     'chat',
@@ -62,6 +65,7 @@ CSRF_TRUSTED_ORIGINS = os.getenv('CSRF_TRUSTED_ORIGINS').split(',')
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
+    'whitenoise.middleware.WhiteNoiseMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
     'corsheaders.middleware.CorsMiddleware',
     'django.middleware.common.CommonMiddleware',
@@ -89,6 +93,14 @@ TEMPLATES = [
     },
 ]
 
+
+# Storage settings
+STORAGES = {
+    'staticfiles': {
+        'BACKEND': 'whitenoise.storage.CompressedStaticFilesStorage',
+    },
+}
+
 WSGI_APPLICATION = 'chatbot.wsgi.application'
 
 
@@ -113,18 +125,18 @@ DATABASES = {
 # https://docs.djangoproject.com/en/5.0/ref/settings/#auth-password-validators
 
 AUTH_PASSWORD_VALIDATORS = [
-    {
-        'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
-    },
+    # {
+    #     'NAME': 'django.contrib.auth.password_validation.UserAttributeSimilarityValidator',
+    # },
     {
         'NAME': 'django.contrib.auth.password_validation.MinimumLengthValidator',
     },
     {
         'NAME': 'django.contrib.auth.password_validation.CommonPasswordValidator',
     },
-    {
-        'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
-    },
+    # {
+    #     'NAME': 'django.contrib.auth.password_validation.NumericPasswordValidator',
+    # },
 ]
 
 # User model
@@ -132,6 +144,11 @@ AUTH_USER_MODEL = 'accounts.User'
 
 # Login url
 LOGIN_URL = 'accounts:login'
+
+
+# reCAPTCHA settings
+RECAPTCHA_PUBLIC_KEY = os.getenv('RECAPTCHA_PUBLIC_KEY')
+RECAPTCHA_PRIVATE_KEY = os.getenv('RECAPTCHA_PRIVATE_KEY')
 
 
 # Crispy forms
@@ -154,7 +171,10 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/5.0/howto/static-files/
 
 STATIC_URL = 'static/'
-STATIC_ROOT = BASE_DIR / 'static'
+STATICFILES_DIRS = [
+    BASE_DIR / 'static',
+]
+STATIC_ROOT = BASE_DIR / 'staticfiles'
 
 
 # Logging Configuration
@@ -211,7 +231,7 @@ LOGGING = {
 }
 
 # PWA settings
-PWA_APP_NAME = "BeaconMind:beacon"
+PWA_APP_NAME = "BeaconMind"
 PWA_APP_DESCRIPTION = "LLM powered chatbot designed for conducting assessments and monitoring"
 PWA_APP_THEME_COLOR = "#FFFFFF"
 PWA_APP_BACKGROUND_COLOR = "#000000"
@@ -219,6 +239,15 @@ PWA_APP_DISPLAY = "standalone"
 PWA_APP_START_URL = "/"
 PWA_APP_ORIENTATION = "portrait"
 PWA_APP_SCOPE = "/"
+PWA_APP_LANG = "en"
+# ICONS
+PWA_APP_ICONS = [
+    {
+        'src': '/static/logos/logo-160x160.png',
+        'sizes': '160x160'
+    }
+]
+# display override
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field

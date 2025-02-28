@@ -54,6 +54,14 @@ class HistoryManager:
             )
         return chat_history
 
+    def get_full_qs(self) -> QuerySet[ChatMessage]:
+        """
+        Retrieves full chat history of user in QuerySet format
+        """
+        chat_obj = ChatMessage.objects.filter(
+            conversation_id=self.conversation_id).order_by('timestamp')
+        return chat_obj
+
     def get_recent(self, N: int = ChatSettings.LAST_N_HRS) -> QuerySet[ChatMessage]:
         """
         Retrieves chat messages of user from the last N hours

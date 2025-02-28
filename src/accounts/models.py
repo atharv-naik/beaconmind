@@ -2,11 +2,14 @@ from django.db import models
 from django.contrib.auth.models import AbstractUser
 from shortuuid.django_fields import ShortUUIDField
 from assessments.definitions import PhaseMap
+from django.core.validators import EmailValidator
+from phonenumber_field.modelfields import PhoneNumberField
 
 
 class User(AbstractUser):
-    first_name = models.CharField(max_length=30, default="Anonymous")
-    phone = models.CharField(max_length=15, blank=True, null=True)
+    first_name = models.CharField(max_length=30, default="Anonymous", null=True, blank=True)
+    email = models.EmailField("Email Address", validators=[EmailValidator()])
+    phone = PhoneNumberField(region='IN', blank=True, null=True)
     address = models.TextField(blank=True, null=True)
     ROLE_CHOICES = (
         ('doctor', 'Doctor'),

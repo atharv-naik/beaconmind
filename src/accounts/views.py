@@ -5,7 +5,9 @@ from rest_framework.response import Response
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
 from rest_framework.authentication import TokenAuthentication
+from rest_framework.decorators import api_view
 from django.shortcuts import render, redirect
+from django.contrib import messages
 from django.contrib.auth import login, authenticate
 from .forms import UserRegisterForm, UserLoginForm, PatientRegisterForm
 from .serializers import PasswordResetSerializer, UserRegisterSerializer
@@ -53,27 +55,36 @@ class LoginView(ObtainAuthToken):
             return Response({'detail': f'{e.detail['non_field_errors'][0]}'}, status=status.HTTP_400_BAD_REQUEST)
 
 
+@api_view(['GET', 'POST'])
 def register(request):
     if request.method == 'POST':
-        form = UserRegisterForm(request.POST)
+        user = request._user
+        if user.is_authenticated and user.role == 'staff':
+            form = UserRegisterForm(request.POST)
+        else:
+            form = PatientRegisterForm(request.POST)
         if form.is_valid():
             user = form.save()
             login(request, user)
             return redirect('home')
+        else:
+            return render(request, 'accounts/register.html', {'form': form})
     else:
-        user = request.user
+        user = request._user
         if user.is_authenticated and user.role == 'staff':
             # Staff can register users with any role - staff, doctor, or patient
             form = UserRegisterForm()
         else:
             # Anonymous users can only register as patients - to prevent abuse
             form = PatientRegisterForm()
-    return render(request, 'accounts/register.html', {'form': form})
+        return render(request, 'accounts/register.html', {'form': form})
 
 
+@api_view(['GET', 'POST'])
 def user_login(request):
     if request.method == 'POST':
         form = UserLoginForm(data=request.POST)
+        login_failed = False
         if form.is_valid():
             username = form.cleaned_data.get('username')
             password = form.cleaned_data.get('password')
@@ -81,6 +92,10 @@ def user_login(request):
             if user is not None:
                 login(request, user)
                 return redirect('home')
+            else:
+                login_failed = True
+        elif form.errors or login_failed:
+            return render(request, 'accounts/login.html', {'form': form})
     else:
         form = UserLoginForm()
     return render(request, 'accounts/login.html', {'form': form})

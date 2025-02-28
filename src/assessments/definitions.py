@@ -10,7 +10,7 @@ END = "END"
 
 
 class QuestionNode:
-    def __init__(self, node_id: str, qid: int, text: str, y: Union[int, str], n: Union[int, str], o: Union[int, str], r: int = 2):
+    def __init__(self, node_id: str, qid: Union[int, str], text: str, y: Union[int, str], n: Union[int, str], o: Union[int, str], r: int = 2):
         self.node_id = node_id
         self.qid = qid
         self.text = text
@@ -191,7 +191,7 @@ class PHQ9Phase(BaseAssessmentPhase):
 
     @property
     def N(self) -> int:
-        return 9
+        return len(set(node.qid for node in self.questions.values()))
 
     @property
     def low(self) -> int:
@@ -269,8 +269,7 @@ class PHQ9Phase(BaseAssessmentPhase):
         if isinstance(data, int):
             score = data
         else:
-            score = sum([data[str(q_id)]["score"]
-                        for q_id in range(1, self.N + 1)])
+            score = sum([data[str(qid)]["score"] for qid in data.keys()])
         match score:
             case n if n <= 4:
                 return "Minimal depression"
@@ -285,7 +284,7 @@ class PHQ9Phase(BaseAssessmentPhase):
 
     def total_score(self, data: Dict[str, Dict[str, int]]) -> int:
         """Get the total score of the PHQ-9 assessment."""
-        return sum([data[str(qid)]["score"] for qid in range(1, self.N + 1)])
+        return sum([data[str(qid)]["score"] for qid in data.keys()])
 
 
 class GAD7Phase(BaseAssessmentPhase):
@@ -304,7 +303,7 @@ class GAD7Phase(BaseAssessmentPhase):
 
     @property
     def N(self) -> int:
-        return 7
+        return len(set(node.qid for node in self.questions.values()))
 
     @property
     def low(self) -> int:
@@ -365,13 +364,12 @@ class GAD7Phase(BaseAssessmentPhase):
             ),
         }
 
-    def severity(self, data: Union[Dict[int, Dict[str, int]], int]) -> str:
+    def severity(self, data: Union[Dict[str, Dict[str, int]], int]) -> str:
         """Get the severity of anxiety based on the GAD-7 score."""
         if isinstance(data, int):
             score = data
         else:
-            score = sum([data[str(q_id)]["score"]
-                        for q_id in range(1, self.N + 1)])
+            score = sum([data[str(qid)]["score"] for qid in data.keys()])
         match score:
             case n if n <= 4:
                 return "Minimal anxiety"
@@ -382,9 +380,9 @@ class GAD7Phase(BaseAssessmentPhase):
             case _:
                 return "Severe anxiety"
 
-    def total_score(self, data: Dict[int, Dict[str, int]]) -> int:
+    def total_score(self, data: Dict[str, Dict[str, int]]) -> int:
         """Get the total score of the GAD-7 assessment."""
-        return sum([data[str(qid)]["score"] for qid in range(1, self.N + 1)])
+        return sum([data[str(qid)]["score"] for qid in data.keys()])
 
 
 class MonitoringPhase(BaseAssessmentPhase):
@@ -399,11 +397,11 @@ class MonitoringPhase(BaseAssessmentPhase):
 
     @property
     def N(self) -> int:
-        return len(self.questions)
+        return len(set(node.qid for node in self.questions.values()))
     
     @property
     def supports_scoring(self) -> bool:
-        return False
+        return True
 
     @property
     def low(self) -> int:
@@ -423,93 +421,58 @@ class MonitoringPhase(BaseAssessmentPhase):
             "1": QuestionNode(
                 node_id="1",
                 qid=1,
-                text="How have you been feeling emotionally over the past week?",
-                y=2, n=2, o=2
+                text="Have you noticed any improvement or worsening in your [specific symptoms, e.g., anxiety, depression, psychosis]?",
+                y="2a", n="2a", o="2a"
             ),
-            "2": QuestionNode(
-                node_id="2",
-                qid=2,
-                text="Have you experienced any changes in your mood or energy levels?",
+            "2a": QuestionNode(
+                node_id="2a",
+                qid="2a",
+                text="Have you experienced any new symptoms since your last visit?",
+                y="2b", n=3, o=3
+            ),
+            "2b": QuestionNode(
+                node_id="2b",
+                qid="2b",
+                text="What are the new symptoms?",
                 y=3, n=3, o=3
             ),
             "3": QuestionNode(
                 node_id="3",
                 qid=3,
-                text="Have you noticed any improvement or worsening in your [specific symptoms, e.g., anxiety, depression, psychosis]?",
+                text="Have you been taking your prescribed medications as directed?",
                 y=4, n=4, o=4
             ),
             "4": QuestionNode(
                 node_id="4",
                 qid=4,
-                text="Have you experienced any new symptoms since your last visit?",
-                y=5, n=5, o=5
+                text="Have you missed any doses? If yes, how often?",
+                y="5a", n="5a", o="5a"
             ),
-            "5": QuestionNode(
-                node_id="5",
-                qid=5,
-                text="Have you been taking your prescribed medications as directed?",
-                y=6, n=6, o=6
+            "5a": QuestionNode(
+                node_id="5a",
+                qid="5a",
+                text="Have you experienced any side effects from the medication?",
+                y="5b", n=6, o=6
+            ),
+            "5b": QuestionNode(
+                node_id="5b",
+                qid="5b",
+                text="What side effects have you experienced?",
+                y=6, n=6, o=6,
+                # type="descriptive"
             ),
             "6": QuestionNode(
                 node_id="6",
                 qid=6,
-                text="Have you missed any doses? If yes, how often?",
-                y=7, n=7, o=7
-            ),
-            "7": QuestionNode(
-                node_id="7",
-                qid=7,
-                text="Have you experienced any side effects from the medication?",
-                y=8, n=8, o=8
-            ),
-            "8": QuestionNode(
-                node_id="8",
-                qid=8,
-                text="Have you been able to work on the goals or coping strategies discussed in your last session?",
-                y=9, n=9, o=9
-            ),
-            "9": QuestionNode(
-                node_id="9",
-                qid=9,
-                text="Do you feel that any particular challenges are hindering your progress?",
-                y=10, n=10, o=10
-            ),
-            "10": QuestionNode(
-                node_id="10",
-                qid=10,
-                text="Are you able to perform daily tasks as usual (e.g., work, household responsibilities)?",
-                y=11, n=11, o=11
-            ),
-            "11": QuestionNode(
-                node_id="11",
-                qid=11,
-                text="Have you engaged in social activities or connected with friends/family recently?",
-                y=12, n=12, o=12
-            ),
-            "12": QuestionNode(
-                node_id="12",
-                qid=12,
-                text="Have you experienced any aggressive or harmful impulses towards others?",
-                y=13, n=13, o=13
-            ),
-            "13": QuestionNode(
-                node_id="13",
-                qid=13,
                 text="Have you used any substances (e.g., alcohol, drugs) since your last visit?",
-                y=14, n=14, o=14
-            ),
-            "14": QuestionNode(
-                node_id="14",
-                qid=14,
-                text="Are there any concerns or challenges you'd like to discuss with your care team?",
                 y=END, n=END, o=END
             ),
         }
 
-    def severity(self, data: Union[Dict[int, Dict[str, int]], int]) -> str:
+    def severity(self, data: Union[Dict[str, Dict[str, int]], int]) -> str:
         return "Not applicable"
 
-    def total_score(self, data: Dict[int, Dict[str, int]]) -> int:
+    def total_score(self, data: Dict[str, Dict[str, int]]) -> int:
         return 0
 
 
@@ -571,7 +534,7 @@ class ASQPhase(BaseAssessmentPhase):
 
     @property
     def N(self) -> int:
-        return 5
+        return len(set(node.qid for node in self.questions.values()))
 
     @property
     def low(self) -> int:
@@ -622,8 +585,8 @@ class ASQPhase(BaseAssessmentPhase):
                 node_id="3y",
                 qid=3,
                 text="In the past week, have you been having thoughts about killing yourself?",
-                y="4y",  # YES: maintain positive flag.
-                n="4y",  # NO: still positive flag.
+                y="4ya",  # YES: maintain positive flag.
+                n="4ya",  # NO: still positive flag.
                 o=END,
                 r=1
             ),
@@ -631,33 +594,69 @@ class ASQPhase(BaseAssessmentPhase):
                 node_id="3n",
                 qid=3,
                 text="In the past week, have you been having thoughts about killing yourself?",
-                y="4y",  # YES: switch to positive branch.
-                n="4n",  # NO: remain negative.
+                y="4ya",  # YES: switch to positive branch.
+                n="4na",  # NO: remain negative.
                 o=END,
                 r=1
             ),
             # Q4: Ask about previous suicide attempts.
-            "4y": QuestionNode(
-                node_id="4y",
-                qid=4,
-                text="Have you ever tried to kill yourself? If yes, how and when?",
-                y="5",  # Regardless of answer, if positive flag is active, proceed to Q5.
-                n="5",
+            "4ya": QuestionNode(
+                node_id="4ya",
+                qid="4a",
+                text="Have you ever tried to kill yourself?",
+                y="4yb",  # YES: maintain positive flag
+                n="5y",   # NO: as positive flag was raised earlier, jump to Q5
+                o="5y",
+                r=1
+            ),
+            "4na": QuestionNode(
+                node_id="4na",
+                qid="4a",
+                text="Have you ever tried to kill yourself?",
+                y="4yb",  # YES: override negative flag and go to Q4b
+                n=END,    # NO: as no positive flag was raised earlier, end assessment.
                 o=END,
                 r=1
             ),
-            "4n": QuestionNode(
-                node_id="4n",
-                qid=4,
-                text="Have you ever tried to kill yourself? If yes, when?",
-                y="5",  # If a YES is given here, override negative flag and go to Q5.
-                n=END,  # If response remains NO and no positive flag was raised earlier, end assessment.
+            "4yb": QuestionNode(
+                node_id="4yb",
+                qid="4b",
+                text="How?",
+                y="4yc",  # YES/NO: has no significance for this question; no switching
+                n="4yc",
+                o="5y",
+                r=1
+            ),
+            "4nb": QuestionNode(
+                node_id="4nb",
+                qid="4b",
+                text="How?",
+                y="4nc",  # YES/NO: has no significance for this question; no switching
+                n="4nc",
+                o="5y",
+                r=1
+            ),
+            "4yc": QuestionNode(
+                node_id="4yc",
+                qid="4c",
+                text="When?",
+                y="5y",   # YES/NO: has no significance for this question; no switching
+                n="5y",
+                o="5y",
+                r=1
+            ),
+            "4nc": QuestionNode(
+                node_id="4nc",
+                qid="4c",
+                text="When?",
+                y=END,    # YES/NO: has no significance for this question; no switching
+                n=END,
                 o=END,
                 r=1
             ),
             # Q5: Final question about current suicidal thoughts.
-            "5": QuestionNode(
-                node_id="5",
+            "5y": QuestionNode(
+                node_id="5y",
                 qid=5,
                 text="Are you having thoughts of killing yourself right now?",
                 y=END,  # Terminal node: assessment ends.
@@ -678,7 +677,7 @@ class ASQPhase(BaseAssessmentPhase):
         Otherwise, the screen is considered 'Negative'.
         """
 
-        if all(data[str(qid)]["score"] == 0 for qid in range(1, 5)):
+        if all(data[str(qid)]["score"] == 0 for qid in data.keys()):
             return "Negative"
         if data["5"]["score"] == 1:
             return "Acute positive screen"
@@ -690,7 +689,7 @@ class ASQPhase(BaseAssessmentPhase):
         base class, even though the primary use of the ASQ is as a screening tool rather than
         a graded assessment.
         """
-        return sum(data[str(qid)]["score"] for qid in range(1, self.N))
+        return sum(data[str(qid)]["score"] for qid in data.keys())
 
 
 class PhaseMap:
@@ -698,9 +697,9 @@ class PhaseMap:
 
     _seq = [
         PHQ9Phase().name,
+        GAD7Phase().name,
         ASQPhase().name,
-        # GAD7Phase().name,
-        # MonitoringPhase().name,
+        MonitoringPhase().name,
     ]
 
     _mapper = {
@@ -734,7 +733,7 @@ class PhaseMap:
 
     @classmethod
     def all(cls) -> List[BaseAssessmentPhase]:
-        return [cls._mapper[name] for name in cls._seq]
+        return [cls._mapper[name] for name in cls._mapper]
 
     @classmethod
     def next(cls, current: str, wrap=False) -> str:
@@ -759,7 +758,7 @@ if __name__ == "__main__":
     ic(phase.verbose_name)
     # ic(phase.description)
     # ic(phase.questions)
-    # ic(phase.N)
+    ic(phase.N)
     # ic(phase.low)
     # ic(phase.high)
     # ic(phase.span)

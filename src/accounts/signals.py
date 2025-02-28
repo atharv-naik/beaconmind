@@ -13,6 +13,10 @@ def create_user_profile(sender, instance, created, **kwargs):
             Doctor.objects.create(user=instance)
         elif instance.role == 'patient':
             Patient.objects.create(user=instance)
+        elif instance.role == 'staff':
+            instance.is_staff = True
+            # add staff permissions here
+        instance.save()
 
 @receiver(pre_save, sender=User)
 def update_user_profile(sender, instance, **kwargs):

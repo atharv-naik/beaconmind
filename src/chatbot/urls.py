@@ -29,6 +29,3 @@ urlpatterns = [
     path('chat/', include('chat.urls')),
     path('dashboard/', include('dashboard.urls')),
 ]
-
-if settings.DEBUG:
-    urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)

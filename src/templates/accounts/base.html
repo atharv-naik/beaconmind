@@ -1,0 +1,386 @@
+{% load static %}
+{% load pwa %}
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}Base{% endblock %}</title>
+    <!-- Importing Material Icons -->
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    
+    <style>
+        /* Resetting default styles and setting box-sizing */
+        *, *::before, *::after {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: Arial, sans-serif;
+        }
+
+        :root {
+            --accent-primary: #8919fa;
+            --accent-primary-light: #a452f6;
+            --accent-secondary: #f6995263;
+            
+            --accent-primary: #993396;
+            --accent-primary-light: #b44ab4;
+            --accent-primary-dark: #6e006e;
+            --accent-secondary: #f6995263;
+        }
+
+        body {
+            position: relative;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            padding: 20px;
+        }
+
+        body::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: url('https://unsplash.it/1920/1080?random') center/cover no-repeat;
+            background: url('https://images.unsplash.com/photo-1494500764479-0c8f2919a3d8') no-repeat center center/cover;
+            background: url("{% static 'accounts/images/bg/2.jpg' %}") no-repeat center center/cover;
+            background-color: #515db3;
+            z-index: -1;
+        }
+
+        .container {
+            position: relative;
+            z-index: 1;
+            background: #c2afbf;
+            padding: 20px;
+            border-radius: 15px;
+            box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+
+            min-width: 400px;
+            max-width: 500px;
+            min-height: 400px;
+            aspect-ratio: 400/450;
+            overflow-y: auto;
+
+            scrollbar-width: none;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+
+            background: #c2afbf6c;
+            background: rgba(220, 220, 220, 0.25);
+            backdrop-filter: blur(10px);
+        }
+
+        form {
+            overflow-y: auto;
+            scrollbar-width: none;
+        }
+
+        .form-content.row {
+            display: flex;
+            flex-direction: row;
+            align-items: flex-start;
+            gap: 20px;
+            margin: 20px 0;
+        }
+
+        .form-content .col-1 {
+            flex: 1;
+            border-right: 1px solid var(--accent-primary-dark);
+            padding-right: 20px;
+        }
+
+        .form-content .col-2 {
+            flex: 1;
+        }
+
+        h2 {
+            text-align: center;
+            margin-bottom: 20px;
+            color: #333;
+        }
+
+        .form-group {
+            margin-bottom: 15px;
+            position: relative;
+            display: flex;
+            flex-direction: column;
+            align-items: flex-start;
+            justify-content: center;
+        }
+
+        label {
+            font-weight: bold;
+            display: block;
+            margin-bottom: 5px;
+            color: #111;
+        }
+
+        input, textarea, select {
+            width: 100%;
+            padding: 10px;
+            padding-left: 35px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+            outline: none;
+            transition: border-color 0.3s;
+            background: #f9f9f98a;
+            color: #333;
+            font-size: 16px;
+
+            background: inherit;
+            border: none;
+            border-bottom: 1px solid var(--accent-primary-dark);
+            border-radius: 0;
+        }
+
+        input:focus, textarea:focus, select:focus {
+            outline: 2px solid var(--accent-primary-light);
+
+            outline: none;
+            border-bottom: 2px solid var(--accent-primary-dark);
+        }
+
+        textarea {
+            resize: none;
+            height: 38px;
+        }
+        textarea::-webkit-scrollbar {
+            width: 5px;
+        }
+        textarea::-webkit-scrollbar-thumb {
+            background: #555;
+            border-radius: 5px;
+        }
+        textarea::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        .material-icons:not(.err) {
+            position: absolute;
+            left: 10px;
+            font-size: 20px;
+            color: #999;
+            transition: color 0.3s;
+
+            color: #333;
+        }
+
+        .form-inline {
+            position: relative;
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            justify-content: center;
+            width: 100%;
+        }
+
+        .form-inline:focus-within .material-icons {
+            color: var(--accent-primary);
+        }
+
+        .error {
+            color: #802121;
+            font-weight: bold;
+            font-size: 0.9em;
+            margin-top: 5px;
+        }
+
+        .non-field-errors {
+            margin-bottom: 15px;
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            justify-content: center;
+            border-radius: 10px;
+            border: 1px solid #f00;
+            padding: 10px;
+            background: var(--accent-secondary);
+
+        }
+
+        .non-field-errors .material-icons {
+            color: #f00;
+            font-size: 20px;
+            margin-right: 10px;
+        }
+
+        button {
+            width: 100%;
+            padding: 10px;
+            background: var(--accent-primary-light);
+            border: none;
+            color: #eee;
+            font-size: 16px;
+            border-radius: 10px;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+
+        button:hover {
+            background: var(--accent-primary-dark);
+            color: #eee;
+        }
+
+        .reg-info, .lg-info {
+            text-align: center;
+            margin-top: 20px;
+            color: #333;
+        }
+        .reg-info a, .lg-info a {
+            color: var(--accent-primary-dark);
+            font-weight: bold;
+            font-style: italic;
+            text-decoration: none;
+        }
+        .reg-info a:hover, .lg-info a:hover {
+            text-decoration: underline;
+        }
+
+        select {
+            width: 100%;
+            padding: 10px;
+            padding-left: 35px; /* Space for the icon */
+            border: 1px solid #333;
+            border-radius: 5px;
+            outline: none;
+            transition: border-color 0.3s;
+            background: rgba(249, 249, 249, 0.48);
+
+            background: #c2afbf36;
+            background: transparent;
+
+            appearance: none; /* Removes default dropdown arrow in some browsers */
+            -webkit-appearance: none;
+            -moz-appearance: none;
+            font-size: 16px;
+            color: #333;
+            cursor: pointer;
+        }
+        
+        /* When focused */
+        select:focus {
+            border-color: var(--accent-primary-light);
+            border-width: 2px;
+
+            background: #c2afbf;
+        }
+        
+        /* Wrapper for positioning the icon */
+        .select-wrapper {
+            position: relative;
+            width: 100%;
+        }
+        
+        /* Add an icon inside the select field */
+        .select-wrapper .material-icons {
+            position: absolute;
+            left: 10px;
+            top: 50%;
+            transform: translateY(-50%);
+            font-size: 20px;
+            pointer-events: none;
+        }
+        
+        /* Style for the dropdown arrow */
+        .select-wrapper::after {
+            content: '▼'; /* Custom dropdown arrow */
+            font-size: 14px;
+            color: var(--accent-primary);
+            position: absolute;
+            right: 15px;
+            top: 50%;
+            transform: translateY(-50%);
+            pointer-events: none;
+        }
+
+        /* checkbox styles */
+        .agreement {
+            display: flex;
+            flex-direction: row;
+            align-items: center;
+            margin: 20px;
+            cursor: pointer;
+        }
+
+        .agreement a {
+            color: var(--accent-primary-dark);
+            font-weight: bold;
+            text-decoration: underline;
+        }
+
+        .form-control {
+            font-family: system-ui, sans-serif;
+            font-size: 1rem;
+            font-weight: bold;
+            line-height: 1.1;
+
+            display: grid;
+            grid-template-columns: 1em auto;
+            gap: 0.5em;
+            cursor: pointer;
+          }
+
+          input[type="checkbox"] {
+            /* Add if not using autoprefixer */
+            -webkit-appearance: none;
+            appearance: none;
+            /* For iOS < 15 to remove gradient background */
+            background-color: #ccc;
+            /* Not removed via appearance */
+            margin: 0;
+            padding: 0;
+
+            font: inherit;
+            color: currentColor;
+            width: 1.15em;
+            height: 1.15em;
+            border: 0.15em solid currentColor;
+            border-radius: 0.15em;
+            transform: translateY(-0.075em);
+
+            display: grid;
+            place-content: center;
+            cursor: pointer;
+          }
+
+          input[type="checkbox"]::before {
+            content: "";
+            width: 0.65em;
+            height: 0.65em;
+            transform: scale(0);
+            transition: 120ms transform ease-in-out;
+            box-shadow: inset 1em 1em var(--accent-primary);
+
+            /* Windows High Contrast Mode */
+            background-color: CanvasText;
+
+            transform-origin: bottom left;
+            clip-path: polygon(14% 44%, 0 65%, 50% 100%, 100% 16%, 80% 0%, 43% 62%);
+          }
+
+          input[type="checkbox"]:checked::before {
+            transform: scale(1);
+          }
+        
+
+        {% block extra_styles %}{% endblock %}
+    </style>
+</head>
+<body>
+
+    <div class="container-outer">
+
+        {% block content %}{% endblock %}
+
+    </div>
+    
+    {% block extra_scripts %}{% endblock %}
+</body>
+</html>
