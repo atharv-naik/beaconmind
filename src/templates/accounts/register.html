@@ -1,41 +1,199 @@
-{% load crispy_forms_tags %}
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Register</title>
-    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
-    <style>
-        .asteriskField {
-            display: none;
-        }
-        form label:not(.requiredField):after {
-            content: "(optional)";
-            color: grey;
-            font-size: 0.8em;
-        }
-    </style>
-</head>
-<body>
-<div class="container mt-5">
-    <div class="row justify-content-center">
-        <div class="col-md-8">
-            <div class="card">
-                <div class="card-header">Register</div>
-                <div class="card-body">
-                    <form method="POST">
-                        {% csrf_token %}
-                        {{ form|crispy }}
-                        <button type="submit" class="btn btn-primary btn-block">Register</button>
-                    </form>
-                    <div class="text-center mt-3">
-                        <a href="{% url 'accounts:login' %}">Already have an account? Login here</a>
-                    </div>
-                </div>
+{% extends "accounts/base.html" %}
+
+{% block title %}Register{% endblock %}
+
+{% block extra_styles %}
+    .container {
+        min-width: 500px;
+        height: unset;
+        aspect-ratio: unset;
+    }
+    .material-icons.right {
+        left: unset;
+        right: 10px;
+        cursor: pointer;
+    }
+    .heading {
+        margin-top: 20px;
+        margin-bottom: 20px;
+        font-size: 24px;
+        font-weight: 500;
+        text-align: center;
+    }
+{% endblock %}
+
+{% block content %}
+
+<div class="container">
+    <div class="heading">
+        <span>Register to <i>BeaconMind<i></span>
+    </div>
+
+<form id="register-form" method="POST">
+    <input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
+
+    {% if form.non_field_errors %}
+    <div class="non-field-errors">
+        <span class="material-icons err">error</span>
+        <div class="error">
+            {% for error in form.non_field_errors %}
+                <p>{{ error }}</p>
+            {% endfor %}
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="form-content row">
+
+        <div class="col-1">
+        
+
+    <div class="form-group">
+        {% comment %} <label for="username">Username</label> {% endcomment %}
+        <div class="form-inline">
+            <span class="material-icons">person</span>
+            <input type="text" id="username" name="username" required placeholder={{ form.username.label }}>
+        </div>
+        {% if form.username.errors %}
+            <div id="username-error" class="error non-field-errors">
+                {{ form.username.errors.0 }}
             </div>
+        {% endif %}
+    </div>
+
+    <div class="form-group">
+        {% comment %} <label for="email">Email</label> {% endcomment %}
+        <div class="form-inline">
+            <span class="material-icons">email</span>
+            <input type="email" id="email" name="email" required placeholder={{ form.email.label }}>
+        </div>
+
+        {% if form.email.errors %}
+            <div id="email-error" class="error non-field-errors">
+                {{ form.email.errors.0 }}
+            </div>
+        {% endif %}
+    </div>
+
+    <div class="form-group">
+        {% comment %} <label for="phone">Phone</label> {% endcomment %}
+        <div class="form-inline">
+            <span class="material-icons">phone</span>
+            <input type="text" id="phone" name="phone" required placeholder={{ form.phone.label }}>
+        </div>
+
+        {% if form.phone.errors %}
+            <div id="phone-error" class="error non-field-errors">
+                {{ form.phone.errors.0 }}
+            </div>
+        {% endif %}
+    </div>
+    
+</div>
+<div class="col-2">
+    <div class="form-group">
+        {% comment %} <label for="address">Address</label> {% endcomment %}
+        <div class="form-inline">
+            <span class="material-icons">home</span>
+            <textarea id="address" name="address" required placeholder={{ form.address.label }}></textarea>
+        </div>
+        
+        {% if form.address.errors %}
+        <div id="address-error" class="error non-field-errors">
+            {{ form.address.errors.0 }}
+        </div>
+        {% endif %}
+    </div>
+    
+
+
+    <div class="form-group">
+        {% comment %} <label for="password1">Password</label> {% endcomment %}
+        <div class="form-inline">
+            <span class="material-icons">lock</span>
+            <input type="password" id="password1" name="password1" required placeholder={{ form.password1.label }}>
+        </div>
+        
+        {% if form.password1.errors %}
+            <div id="password-error" class="error non-field-errors">
+                {{ form.password1.errors.0 }}
+            </div>
+        {% endif %}
+    </div>
+
+    <div class="form-group">
+        {% comment %} <label for="password2">Confirm Password</label> {% endcomment %}
+        <div class="form-inline">
+            <span class="material-icons">lock</span>
+            <input type="password" id="password2" name="password2" required placeholder={{ form.password2.label }}>
+        </div>
+
+        <div id="password-error" class="error"></div>
+
+        {% if form.password2.errors %}
+            <div id="password-error" class="error non-field-errors">
+                {{ form.password2.errors.0 }}
+            </div>
+        {% endif %}
         </div>
     </div>
 </div>
-</body>
-</html>
+        
+    {% if form.role.field.widget.input_type != 'hidden' %}
+
+        <div class="form-group">
+            <label for="role">Register as</label>
+            <div class="select-wrapper">
+                <select id="role" name="role">
+                    {% for value, label in form.role.field.choices %}
+                    <option value="{{ value }}">
+                        {{ label }}
+                    </option>
+                    {% endfor %}
+                </select>
+                <span class="material-icons">assignment_ind</span>
+            </div>
+        </div>
+    {% endif %}
+
+
+    <div class="agreement form-group">
+        <label for="agreement" class="form-control">
+            <input type="checkbox" id="agreement" name="agreement" required>
+            <span> I agree to the <a href="#">terms and conditions</a><span>
+        </label>
+    </div>
+
+
+    <button type="submit" id="submit-btn" hidden>Register</button>
+</form>
+
+    <button type="submit" onclick="document.getElementById('submit-btn').click()">Register</button>
+
+<div class="lg-info">
+    <p>Already have an account? <a href="{% url 'accounts:login' %}">Login</a></p>
+</div>
+
+{% block extra_scripts %}
+<script>
+    document.addEventListener("DOMContentLoaded", function () {
+        const form = document.getElementById("register-form");
+        const password1 = document.getElementById("password1");
+        const password2 = document.getElementById("password2");
+        const passwordError = document.getElementById("password-error");
+
+        form.addEventListener("submit", function (event) {
+            if (password1.value !== password2.value) {
+                event.preventDefault();
+                passwordError.textContent = "Passwords do not match!";
+            } else {
+                passwordError.textContent = "";
+            }
+        });
+    });
+</script>
+{% endblock %}
+
+</div>
+
+{% endblock %}

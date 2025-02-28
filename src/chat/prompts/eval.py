@@ -27,9 +27,9 @@ eval = base + dedent(
     The categories are defined below.
     Be sure to read the conversation and the user's response carefully before categorizing.
 
-    A conversation can be categorized into EXACTLY ONE of the following categories:
+    A user message can be categorized into EXACTLY ONE of the following categories:
     - NORMAL group:
-        A response is normal if it is clear, concise, and relevant to the question asked and therefore by extension, also evaluable and be assigned a score.
+        A response is normal if it is clear, concise, and relevant to the question asked and therefore by extension, also evaluable and can be assigned a score.
         - NORMAL_y: The user's response is normal and aligns towards a positive evaluation.
                     In other words, the user's response is aligning/leaning/implied towards a "yes" to the question asked.
                     ex. Question: "... Have you felt down, depressed, or hopeless?"

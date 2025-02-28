@@ -195,6 +195,10 @@ class SessionPipeline:
             # check for next phase
             next_phase = PhaseMap.next(self.session.phase)
 
+            # TODO: check if phase needs to be skipped for current session 
+            # MonitoringPhase to be skipped in 1st session of patient; 
+            # enable in subsequent sessions
+
             if next_phase == definitions.END:
                 # enter CONCLUDE state
                 self.chat_status = ChatStates.CONCLUDE
@@ -347,22 +351,29 @@ class SessionPipeline:
             type=phase.name,
         )
         ic()
-        q_data = phase.get_questions_dict()
-        for qid, record in data.items():
-            AssessmentRecord.objects.create(
-                assessment=assessment,
-                question_id=qid,
-                question_text=q_data[qid]["text"],
-                score=record["score"],
-                remark=record["remark"],
-                snippet=record["snippet"],
-                keywords=record["keywords"],
-            )
+        try:
+            q_data = phase.get_questions_dict()
+            for qid, record in data.items():
+                AssessmentRecord.objects.create(
+                    assessment=assessment,
+                    question_id=qid,
+                    question_text=q_data[qid]["text"],
+                    score=record["score"],
+                    remark=record["remark"],
+                    snippet=record["snippet"],
+                    keywords=record["keywords"],
+                )
+        except Exception as e:
+            ic(e)
+            raise Exception(f"Error saving assessment records")
         ic()
         # save assessment result
         try:
+            ic(data)
             score = phase.total_score(data)
+            ic()
             severity = phase.severity(data)
+            ic()
             AssessmentResult.objects.create(
                 assessment=assessment,
                 score=score,

@@ -25,8 +25,8 @@ def assessment(request, assessment_id):
     idx = 0
     curr_score = 0
     n_records = records.count()
-    for q_id in range(1, phase.N + 1):
-        if idx < n_records and records[idx].question_id == q_id:
+    for record in records:
+        if idx < n_records and records[idx].question_id == record.question_id:
             scores.append(records[idx].score)
             curr_score += records[idx].score
             idx += 1

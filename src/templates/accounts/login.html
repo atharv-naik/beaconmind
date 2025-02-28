@@ -1,36 +1,129 @@
-{% load crispy_forms_tags %}
-<!DOCTYPE html>
-<html lang="en">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Login</title>
-    <link href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css" rel="stylesheet">
-    <style>
-        .asteriskField {
-            display: none;
-        }
-    </style>
-</head>
-<body>
-<div class="container mt-5">
-    <div class="row justify-content-center">
-        <div class="col-md-6">
-            <div class="card">
-                <div class="card-header">Login</div>
-                <div class="card-body">
-                    <form method="POST">
-                        {% csrf_token %}
-                        {{ form|crispy }}
-                        <button type="submit" class="btn btn-primary btn-block">Login</button>
-                    </form>
-                    <div class="text-center mt-3">
-                        <a href="{% url 'accounts:register' %}">Don't have an account? Register here</a>
-                    </div>
-                </div>
-            </div>
+{% extends "accounts/base.html" %}
+
+{% block title %}Login{% endblock %}
+{% block heading %}Login{% endblock %}
+
+{% block extra_styles %}
+    .container {
+        min-width: 500px;
+        height: unset;
+        aspect-ratio: unset;
+        {% comment %} max-width: 450px; {% endcomment %}
+        {% comment %} max-height: 320px; {% endcomment %}
+        {% comment %} aspect-ratio: 400/320; {% endcomment %}
+    }
+    .material-icons.right {
+        left: unset;
+        right: 10px;
+        cursor: pointer;
+    }
+    .heading {
+        margin-top: 20px;
+        margin-bottom: 20px;
+        font-size: 24px;
+        font-weight: 500;
+        text-align: center;
+    }
+{% endblock %}
+
+
+{% block content %}
+
+<div class="container">
+    <div class="heading">
+        <span>Login to <i>BeaconMind<i></span>
+    </div>
+
+
+<form id="login-form" method="POST">
+    <input type="hidden" name="csrfmiddlewaretoken" value="{{ csrf_token }}">
+
+    {% if form.non_field_errors %}
+    <div class="non-field-errors">
+        <span class="material-icons err">error</span>
+        <div class="error">
+            {% for error in form.non_field_errors %}
+                <p>{{ error }}</p>
+            {% endfor %}
         </div>
     </div>
+    {% endif %}
+
+    <div class="form-group">
+        {% comment %} <label for="username">Username</label> {% endcomment %}
+        <div class="form-inline">
+            <span class="material-icons">person</span>
+            <input type="text" id="username" name="username" required placeholder={{ form.username.label }}>
+        </div>
+    </div>
+
+    <div class="form-group">
+        {% comment %} <label for="password">Password</label> {% endcomment %}
+        <div class="form-inline">
+            <span class="material-icons">lock</span>
+            <input type="password" id="password" name="password" autocomplete required placeholder={{ form.password.label }}>
+            <span class="material-icons right toggle-password" onclick="togglePasswordVisibility()">visibility_off</span>
+        </div>
+    </div>
+
+    {% comment %} reCAPTCHA {% endcomment %}
+    <div class="form-group">
+        {{ form.captcha }}
+
+        <div id="captcha-error" class="error">
+            {% if form.captcha.errors %}
+                {{ form.captcha.errors.0 }}
+            {% endif %}
+        </div>
+    </div>
+
+    <button type="submit" onclick="validateAllFields(event)">Login</button>
+</form>
+
+<div class="reg-info">
+    <p>Don't have an account? <a href="{% url 'accounts:register' %}">Register</a></p>
 </div>
-</body>
-</html>
+
+</div>
+
+{% block extra_scripts %}
+<script>
+    function validateAllFields(event) {
+        let username = document.getElementById('username');
+        let password = document.getElementById('password');
+        let captcha = document.getElementById('g-recaptcha-response');
+        
+        if (username.value === '') {
+            event.preventDefault();
+            document.getElementById('username-error').innerText = 'This field is required';
+        }
+        
+        if (password.value === '') {
+            event.preventDefault();
+            document.getElementById('password-error').innerText = 'This field is required';
+        }
+        
+        if (captcha.value === '') {
+            event.preventDefault();
+            document.getElementById('captcha-error').innerText = 'This field is required';
+        }
+    }
+    
+    
+    function togglePasswordVisibility() {
+        let passwordField = document.getElementById('password');
+        let toggleIcon = document.querySelector('.toggle-password');
+        
+        if (passwordField.type === 'password') {
+            passwordField.type = 'text';
+            toggleIcon.textContent = 'visibility';
+        } else {
+            passwordField.type = 'password';
+            toggleIcon.textContent = 'visibility_off';
+        }
+    }
+</script>
+<script src="https://www.google.com/recaptcha/api.js?render={{ RECAPTCHA_PUBLIC_KEY }}"></script>
+{% endblock %}
+
+{% endblock %}

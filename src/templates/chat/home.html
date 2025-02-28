@@ -9,7 +9,6 @@
     <title>Chat Interface</title>
     <link rel="manifest" href="{% url 'manifest' %}">
     <script src="{% url 'serviceworker' %}"></script>
-    <script src="https://cdn.jsdelivr.net/npm/showdown@1.9.1/dist/showdown.min.js"></script>
     <style>
       *,
       *::before,
@@ -580,6 +579,7 @@
       </div>
     </div>
 
+    <script src="https://cdn.jsdelivr.net/npm/showdown@1.9.1/dist/showdown.min.js"></script>
     <script>
       const chatContainer = document.getElementById("chat-container");
       const userInput = document.getElementById("user-input");
@@ -646,6 +646,7 @@
         );
 
         text = converter.makeHtml(text);
+
         messageDiv.innerHTML = /*html*/ `
                 <div class="msg-content">
                     <span>${text}</span>
@@ -698,9 +699,12 @@
         return waitingDotsDiv;
       }
 
-      function renderAIMessageFromWaitingDots(waitingDotsDiv, text, timestamp) {
+      function createAIMessageFromWaitingDots(waitingDotsDiv, text, timestamp) {
         let time = new Date(timestamp).toLocaleTimeString();
         let date = new Date(timestamp).toLocaleDateString();
+
+        text = converter.makeHtml(text);
+
         waitingDotsDiv.classList.remove("waiting-dots");
         waitingDotsDiv.innerHTML = `
                 <div class="msg-content">
@@ -826,7 +830,7 @@
             throw new Error(`Server error: ${response.status} ${response.statusText}`);
           }
           const data = await response.json();
-          renderAIMessageFromWaitingDots(
+         createAIMessageFromWaitingDots(
             waitingDots,
             data.ai_response,
             new Date()

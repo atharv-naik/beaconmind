@@ -392,7 +392,7 @@
       const drawBarChart = () => {
           const ctxBar = document.getElementById('scoreChart').getContext('2d');
           const data = {
-              labels: Array.from({ length: {{ scores|length }} }, (_, i) => `Q${i + 1}`),
+              labels: [{% for record in records %} "Q{{ record.question_id }}", {% endfor %}],
               datasets: [{
                   base: 0,
                   indexAxis: 'x',
