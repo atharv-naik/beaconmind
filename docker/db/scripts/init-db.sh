@@ -2,4 +2,4 @@
 
 export PGUSER="postgres"
 
-psql -c "CREATE DATABASE afmwdb;"
+psql -c "CREATE DATABASE beacondb;"

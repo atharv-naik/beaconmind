@@ -7,7 +7,6 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.authentication import TokenAuthentication
 from rest_framework.decorators import api_view
 from django.shortcuts import render, redirect
-from django.contrib import messages
 from django.contrib.auth import login, authenticate
 from .forms import UserRegisterForm, UserLoginForm, PatientRegisterForm
 from .serializers import PasswordResetSerializer, UserRegisterSerializer

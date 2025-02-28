@@ -27,7 +27,7 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = 'django-insecure-l9zh=bozp&nhe)_p7e_8=(upicts0d)86tn_-fv9_-dy6b1sqz'
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = False
+DEBUG = True
 
 ALLOWED_HOSTS = os.getenv('ALLOWED_HOSTS').split(',')
 
@@ -147,8 +147,8 @@ LOGIN_URL = 'accounts:login'
 
 
 # reCAPTCHA settings
-RECAPTCHA_PUBLIC_KEY = os.getenv('RECAPTCHA_PUBLIC_KEY')
-RECAPTCHA_PRIVATE_KEY = os.getenv('RECAPTCHA_PRIVATE_KEY')
+RECAPTCHA_PUBLIC_KEY = os.getenv('RECAPTCHA_PUBLIC_KEY', '')
+RECAPTCHA_PRIVATE_KEY = os.getenv('RECAPTCHA_PRIVATE_KEY', '')
 
 
 # Crispy forms
@@ -184,51 +184,42 @@ LOGGING = {
     'version': 1,
     'disable_existing_loggers': False,
     'formatters': {
-        'file_verbose': {
+        'verbose': {
             'format': '{levelname} {asctime} {module} {message}',
             'style': '{',
         },
-        'console_simple': {
-            'format': '{levelname}: {message}',
+        'simple': {
+            'format': '{levelname} {message}',
             'style': '{',
         },
     },
     'handlers': {
         'file': {
-            'level': 'WARNING',
+            'level': 'DEBUG',
             'class': 'logging.FileHandler',
-            'filename': BASE_DIR / 'logs/django.log',
-            'formatter': 'file_verbose',
+            'filename': BASE_DIR / 'logs/debug.log',
+            'formatter': 'verbose',
         },
         'console': {
-            'level': 'WARNING',
+            'level': 'DEBUG',
             'class': 'logging.StreamHandler',
-            'formatter': 'console_simple',
-        },
-        'mail_admins': {
-            'level': 'ERROR',
-            'class': 'django.utils.log.AdminEmailHandler',
-            'formatter': 'file_verbose',
+            'formatter': 'simple',
         },
     },
     'loggers': {
         'django': {
             'handlers': ['file', 'console'],
-            'level': 'WARNING',
+            'level': 'DEBUG',
             'propagate': True,
         },
         'django.request': {
-            'handlers': ['file', 'mail_admins'],
+            'handlers': ['file', 'console'],
             'level': 'ERROR',
-            'propagate': False,
-        },
-        'django.db.backends': {
-            'handlers': ['file'],
-            'level': 'WARNING',
             'propagate': False,
         },
     },
 }
+
 
 # PWA settings
 PWA_APP_NAME = "BeaconMind"

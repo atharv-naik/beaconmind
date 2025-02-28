@@ -1,14 +1,14 @@
 name: beaconmind 
 
 services:
-  watchtower:
-    image: containrrr/watchtower
-    command:
-      - --label-enable=true
-      - --interval=30
-      - --rolling-restart=true
-    volumes:
-      - /var/run/docker.sock:/var/run/docker.sock
+  # watchtower:
+  #   image: containrrr/watchtower
+  #   command:
+  #     - --label-enable=true
+  #     - --interval=30
+  #     - --rolling-restart=true
+  #   volumes:
+  #     - /var/run/docker.sock:/var/run/docker.sock
 
   db:
     image: postgres:16.3-alpine3.20
@@ -33,7 +33,7 @@ services:
     networks:
       - proxy
     restart: always
-    # labels:
+    labels:
       # - traefik.enable=true
       # - traefik.port=80
       # - traefik.http.routers.app.rule=Host(`beacon.docker.localhost`)
@@ -41,7 +41,7 @@ services:
       # - traefik.http.services.app.loadbalancer.server.port=8000
       # - traefik.http.routers.app.entrypoints=websecure
       # - traefik.http.routers.app.tls.certresolver=myresolver
-      # - com.centurylinklabs.watchtower.enable=true
+      - com.centurylinklabs.watchtower.enable=true
     command: sh  -c "python manage.py migrate --noinput && gunicorn chatbot.wsgi:application --bind 0.0.0.0:8000"
     ports:
       - "8000:8000"

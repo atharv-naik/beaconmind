@@ -7,9 +7,12 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Chat Interface</title>
-    <link rel="manifest" href="{% url 'manifest' %}">
+    <link rel="manifest" href="{% url 'manifest' %}" />
     <script src="{% url 'serviceworker' %}"></script>
     <style>
+
+      @import url('https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100..900;1,100..900&display=swap');
+
       *,
       *::before,
       *::after {
@@ -433,10 +436,121 @@
           font-size: 10px;
         }
       }
+
+
+      .welcome-wrapper.show {
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        gap: 20px;
+        color: #ccc;
+        position: absolute;
+        top: 50%;
+        left: 50%;
+        transform: translate(-50%, -50%);
+
+        font-family: 'Roboto', cursive, sans-serif;
+        color: #ddd;
+      }
+
+      .welcome-wrapper {
+        display: none;
+        transition: all 0.5s;
+      }
+
+      .app-logo {
+        background: url("{% static 'logos/logo.png' %}") no-repeat center;
+        background-size: contain;
+        width: 75px;
+        aspect-ratio: 1;
+        border-radius: 50%;
+      }
+
+      .welcome-text {
+        max-width: 300px;
+      }
+
+      .welcome-text div {
+        text-align: center;
+        padding: 5px;
+      }
+
+      .popup {
+        display: none;
+      }
+      .popup.show {
+        background-color: #333;
+        border-radius: 10px;
+        padding: 20px;
+        display: flex;
+        flex-direction: column;
+        justify-content: space-between;
+        align-items: center;
+        gap: 10px;
+        z-index: 1;
+        width: 300px;
+      }
+      .popup-upper {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        gap: 10px;
+      }
+      .popup-lower {
+        display: flex;
+        flex-direction: row;
+        justify-content: space-between;
+        align-items: center;
+        width: 100%;
+      }
+      .popup-title {
+        font-size: 18px;
+        color: #ccc;
+        padding: 10px;
+      }
+      .popup-btn {
+        outline: none;
+        border: none;
+
+        padding: 10px;
+        border-radius: 5px;
+        cursor: pointer;
+        background-color: #444;
+        color: #ccc;
+        width: 100px;
+        text-align: center;
+      }
+      .btn-left {
+        margin-right: auto;
+      }
+      .btn-right {
+        margin-left: auto;
+        background-color:rgba(255, 64, 0, 0.77);
+        color: black;
+      }
+      .popup-btn:hover {
+        background-color: #555;
+      }
+      .btn-right:hover {
+        background-color: rgb(255, 64, 0);
+      }
     </style>
   </head>
   <body>
-    <div id="overlay"></div>
+    <div id="overlay">
+      <div class="popup">
+        <div class="popup-upper">
+          <span class="popup-title">Loading...</span>
+        </div>
+        <div class="popup-lower">
+          <button class="popup-btn btn-left" onclick="closePopup()">
+            Cancel
+          </button>
+          <button class="popup-btn btn-right" onclick="proceed()">Ok</button>
+        </div>
+      </div>
+    </div>
     <div class="container">
       <div class="chat-header">
         <div class="chat-header-left">
@@ -452,7 +566,7 @@
                 d="M80-80v-720q0-33 23.5-56.5T160-880h640q33 0 56.5 23.5T880-800v480q0 33-23.5 56.5T800-240H240L80-80Zm160-320h320v-80H240v80Zm0-120h480v-80H240v80Zm0-120h480v-80H240v80Z"
               />
             </svg>
-            <span>Chat Interface</span>
+            <span>BeaconMind Chat</span>
           </span>
         </div>
         <div class="chat-header-right">
@@ -492,7 +606,7 @@
             </div>
           </div>
 
-          <div class="account-menu-item" id="settings">
+          <div class="account-menu-item" id="abort-btn">
             <div class="account-menu-item-content">
               <div class="account-menu-item-icon icon-wrapper">
                 <svg
@@ -503,11 +617,11 @@
                   fill="#ccc"
                 >
                   <path
-                    d="m403-96-22-114q-23-9-44.5-21T296-259l-110 37-77-133 87-76q-2-12-3-24t-1-25q0-13 1-25t3-24l-87-76 77-133 110 37q19-16 40.5-28t44.5-21l22-114h154l22 114q23 9 44.5 21t40.5 28l110-37 77 133-87 76q2 12 3 24t1 25q0 13-1 25t-3 24l87 76-77 133-110-37q-19 16-40.5 28T579-210L557-96H403Zm59-72h36l19-99q38-7 71-26t57-48l96 32 18-30-76-67q6-17 9.5-35.5T696-480q0-20-3.5-38.5T683-554l76-67-18-30-96 32q-24-29-57-48t-71-26l-19-99h-36l-19 99q-38 7-71 26t-57 48l-96-32-18 30 76 67q-6 17-9.5 35.5T264-480q0 20 3.5 38.5T277-406l-76 67 18 30 96-32q24 29 57 48t71 26l19 99Zm18-168q60 0 102-42t42-102q0-60-42-102t-102-42q-60 0-102 42t-42 102q0 60 42 102t102 42Zm0-144Z"
+                    d="M440-122q-121-15-200.5-105.5T160-440q0-66 26-126.5T260-672l57 57q-38 34-57.5 79T240-440q0 88 56 155.5T440-202v80Zm80 0v-80q87-16 143.5-83T720-440q0-100-70-170t-170-70h-3l44 44-56 56-140-140 140-140 56 56-44 44h3q134 0 227 93t93 227q0 121-79.5 211.5T520-122Z"
                   />
                 </svg>
               </div>
-              <span>Settings</span>
+              <span>Restart session</span>
             </div>
           </div>
 
@@ -543,6 +657,14 @@
       </div>
 
       <div id="chat-container">
+        <!-- welcome div -->
+        <div class="welcome-wrapper">
+          <div class="app-logo"></div>
+          <div class="welcome-text">
+            <div>Welcome to BeaconMind Chat</div>
+          </div>
+        </div>
+
         <!-- Messages will be appended here -->
       </div>
 
@@ -586,6 +708,7 @@
       const sendButton = document.getElementById("send-button");
       const overlay = document.getElementById("overlay");
       const logoutBtn = document.getElementById("logout-btn");
+      const abortBtn = document.getElementById("abort-btn");
       const profilePic = document.getElementById("profile-pic");
       const accountMenu = document.querySelector(".account-menu");
       const collapsable = document.querySelector(".collapsable");
@@ -753,10 +876,17 @@
             appendMessage(msg.user_response, "user", user_timestamp);
             appendMessage(msg.ai_response, "ai", ai_timestamp);
           });
+
+          // if no messages; we toggle display of welcome div
+          if (data.data.length === 0) {
+            document.querySelector(".welcome-wrapper").classList.add("show");
+          } else {
+            document.querySelector(".welcome-wrapper").classList.add("hide");
+          }
         } catch (error) {
           console.error("Failed to fetch chat history:", error);
         } finally {
-          overlay.style.visibility = "hidden";
+          overlay.classList.add("hide");
         }
       }
 
@@ -794,17 +924,20 @@
         metaInfo.textContent = `Session ID: ${session.id}`;
       }
 
-      async function sendMessage(retry=false) {
+      async function sendMessage(retry = false) {
         console.log(retry);
         var messageText;
         if (retry === true) {
           messageText = localStorage.getItem("lastUserMessage");
-        }
-        else {
+        } else {
           messageText = userInput.value.trim();
           localStorage.setItem("lastUserMessage", messageText);
         }
         if (!messageText) return;
+
+        // remove welcome divs
+        document.querySelector(".welcome-wrapper").classList.remove("show");
+        document.querySelector(".welcome-wrapper").classList.add("hide");
 
         if (retry === false) {
           console.log(retry);
@@ -827,10 +960,12 @@
             body: JSON.stringify({ query: messageText }),
           });
           if (!response.ok) {
-            throw new Error(`Server error: ${response.status} ${response.statusText}`);
+            throw new Error(
+              `Server error: ${response.status} ${response.statusText}`
+            );
           }
           const data = await response.json();
-         createAIMessageFromWaitingDots(
+          createAIMessageFromWaitingDots(
             waitingDots,
             data.ai_response,
             new Date()
@@ -856,7 +991,7 @@
         const waitingDots = document.querySelector(".error-message");
         // remove the div
         waitingDots.remove();
-        sendMessage(retry=true);
+        sendMessage((retry = true));
       }
 
       function handleKeyPress(event) {
@@ -886,7 +1021,15 @@
       sendButton.addEventListener("click", () => sendMessage());
       userInput.addEventListener("keypress", handleKeyPress);
       userInput.addEventListener("input", handleInput);
-      logoutBtn.addEventListener("click", logout);
+      logoutBtn.addEventListener("click", () =>
+        openPopup("logout", "This will log you out. Continue?")
+      );
+      abortBtn.addEventListener("click", () =>
+        openPopup(
+          "abort",
+          "This will clear current session and start a new one. Continue?"
+        )
+      );
 
       profilePic.addEventListener("click", (event) => {
         accountMenu.classList.toggle("open");
@@ -907,6 +1050,39 @@
         window.addEventListener("DOMContentLoaded", fetchChatHistory);
       } else {
         fetchChatHistory();
+      }
+
+      // popup menu
+      popup = document.querySelector(".popup");
+      function openPopup(action = "", title = "") {
+        overlay.style.visibility = "visible";
+        popup.classList.add("show");
+
+        // set action in popup div
+        const popupTitle = document.querySelector(".popup-title");
+        popupTitle.textContent = title;
+
+        // set action in popup data value
+        const popupData = document.querySelector(".popup-btn.btn-right");
+        popupData.setAttribute("data-action", action);
+      }
+
+      function closePopup() {
+        overlay.style.visibility = "hidden";
+        popup.classList.remove("show");
+      }
+
+      function proceed() {
+        const action = document
+          .querySelector(".popup-btn.btn-right")
+          .getAttribute("data-action");
+        if (action === "logout") {
+          logout();
+        }
+        if (action === "abort") {
+          // TODO
+        }
+        closePopup();
       }
     </script>
   </body>

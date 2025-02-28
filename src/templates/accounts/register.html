@@ -95,7 +95,7 @@
         {% comment %} <label for="address">Address</label> {% endcomment %}
         <div class="form-inline">
             <span class="material-icons">home</span>
-            <textarea id="address" name="address" required placeholder={{ form.address.label }}></textarea>
+            <textarea id="address" name="address" placeholder={{ form.address.label }}></textarea>
         </div>
         
         {% if form.address.errors %}
@@ -139,8 +139,9 @@
     </div>
 </div>
         
-    {% if form.role.field.widget.input_type != 'hidden' %}
-
+    {% if form.role.field.widget.input_type == 'hidden' %}
+        <input type="hidden" name="role" value="{{ form.role.value|default:'patient' }}">
+    {% else %}
         <div class="form-group">
             <label for="role">Register as</label>
             <div class="select-wrapper">
@@ -153,6 +154,12 @@
                 </select>
                 <span class="material-icons">assignment_ind</span>
             </div>
+
+            {% if form.role.errors %}
+                <div id="role-error" class="error non-field-errors">
+                    {{ form.role.errors.0 }}
+                </div>
+            {% endif %}
         </div>
     {% endif %}
 
