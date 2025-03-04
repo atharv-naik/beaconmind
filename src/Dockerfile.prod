@@ -16,6 +16,10 @@ RUN pip install --no-cache-dir --prefix=/install -r requirements.txt
 # ---- Final Stage ----
 FROM python:3.12-alpine
 
+LABEL org.opencontainers.image.source="https://github.com/atharv-naik/beaconmind"
+LABEL org.opencontainers.image.title="Beaconmind"
+LABEL author="Atharv Naik"
+
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE=1 \
     PYTHONUNBUFFERED=1 \
