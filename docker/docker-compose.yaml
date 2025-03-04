@@ -29,7 +29,7 @@ services:
       - pg-data:/var/lib/postgresql/data # Persisting data
 
   beacon:
-    image: ghcr.io/atharv-naik/beacon.fix:latest
+    image: ghcr.io/atharv-naik/beacon.fix.staging:latest
     networks:
       - proxy
     restart: always
@@ -46,7 +46,7 @@ services:
     ports:
       - "8000:8000"
     env_file: 
-      - ./app/.env
+      - ./app/.env.prod
     volumes:
       - static:/app/static
       - pg-data:/var/lib/postgresql/data # Persisting data

@@ -10,3 +10,7 @@ def home(request):
     elif user.role == 'doctor':
         return redirect('dashboard:home')
     return redirect('admin:index')
+
+def hello(request):
+    from django.http import JsonResponse
+    return JsonResponse({'message': 'Hello, world!'})

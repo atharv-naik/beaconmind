@@ -20,6 +20,35 @@
         font-weight: 500;
         text-align: center;
     }
+
+
+    {% comment %} responsive {% endcomment %}
+    @media screen and (max-width: 550px) {
+        .container {
+            min-width: unset;
+            max-width: unset;
+            aspect-ratio: unset;
+        }
+
+        .form-content.row {
+            flex-direction: column;
+            gap: unset;
+        }
+
+        .col-1, .col-2 {
+            width: 100%;
+            padding: unset !important;
+            border: unset !important;
+        }
+
+        #address {
+            resize: vertical;
+            min-height: 1em;
+            max-height: 100px;
+            scroll-behavior: auto;
+            scrollbar-width: none;
+        }
+    }
 {% endblock %}
 
 {% block content %}
@@ -62,7 +91,6 @@
     </div>
 
     <div class="form-group">
-        {% comment %} <label for="email">Email</label> {% endcomment %}
         <div class="form-inline">
             <span class="material-icons">email</span>
             <input type="email" id="email" name="email" required placeholder={{ form.email.label }}>
@@ -76,7 +104,6 @@
     </div>
 
     <div class="form-group">
-        {% comment %} <label for="phone">Phone</label> {% endcomment %}
         <div class="form-inline">
             <span class="material-icons">phone</span>
             <input type="text" id="phone" name="phone" required placeholder={{ form.phone.label }}>
@@ -92,7 +119,6 @@
 </div>
 <div class="col-2">
     <div class="form-group">
-        {% comment %} <label for="address">Address</label> {% endcomment %}
         <div class="form-inline">
             <span class="material-icons">home</span>
             <textarea id="address" name="address" placeholder={{ form.address.label }}></textarea>
@@ -108,10 +134,9 @@
 
 
     <div class="form-group">
-        {% comment %} <label for="password1">Password</label> {% endcomment %}
         <div class="form-inline">
             <span class="material-icons">lock</span>
-            <input type="password" id="password1" name="password1" required placeholder={{ form.password1.label }}>
+            <input type="password" id="password1" name="password1" autocomplete required placeholder={{ form.password1.label }}>
         </div>
         
         {% if form.password1.errors %}
@@ -122,10 +147,9 @@
     </div>
 
     <div class="form-group">
-        {% comment %} <label for="password2">Confirm Password</label> {% endcomment %}
         <div class="form-inline">
             <span class="material-icons">lock</span>
-            <input type="password" id="password2" name="password2" required placeholder={{ form.password2.label }}>
+            <input type="password" id="password2" name="password2" autocomplete required placeholder={{ form.password2.label }}>
         </div>
 
         <div id="password-error" class="error"></div>
@@ -174,8 +198,6 @@
 
     <button type="submit" id="submit-btn" hidden>Register</button>
 </form>
-
-    <button type="submit" onclick="document.getElementById('submit-btn').click()">Register</button>
 
 <div class="lg-info">
     <p>Already have an account? <a href="{% url 'accounts:login' %}">Login</a></p>

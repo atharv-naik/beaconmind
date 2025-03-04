@@ -79,7 +79,6 @@ def register(request):
         return render(request, 'accounts/register.html', {'form': form})
 
 
-@api_view(['GET', 'POST'])
 def user_login(request):
     if request.method == 'POST':
         form = UserLoginForm(data=request.POST)
@@ -95,9 +94,10 @@ def user_login(request):
                 login_failed = True
         elif form.errors or login_failed:
             return render(request, 'accounts/login.html', {'form': form})
-    else:
+    elif request.method == 'GET':
         form = UserLoginForm()
-    return render(request, 'accounts/login.html', {'form': form})
+        return render(request, 'accounts/login.html', {'form': form})
+    return HttpResponseNotAllowed(['GET', 'POST'])
 
 
 def user_logout(request):

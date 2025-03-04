@@ -221,8 +221,8 @@ class ConversationManager:
                 if time_inactive.total_seconds() / 60 > ChatSettings.SESSION_TIMEOUT:
                     chat_session.status = 'aborted'
                     chat_session.save(update_fields=['status'])
-                    assessment = chat_session.assessments.filter(status='pending').first()
-                    if assessment:
+                    assessments = chat_session.assessments.filter(status='pending')
+                    for assessment in assessments:
                         assessment.status = 'aborted'
                         assessment.save(update_fields=['status'])
                     # reset patient phase

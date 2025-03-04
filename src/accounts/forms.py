@@ -54,8 +54,13 @@ class UserLoginForm(AuthenticationForm):
         widget=ReCaptchaV2Checkbox(
             attrs={
                 'data-theme': 'light',
+                'data-callback': 'recaptchaCallback',
+                'data-expired-callback': 'recaptchaExpiredCallback',
+                'required': 'required',
             }
-        )
+        ),
+        required=True,
+        label='Captcha'
     )
     class Meta:
         model = User

@@ -2,10 +2,15 @@ from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin
 from django.utils.translation import gettext_lazy as _
 from .models import User, Doctor, Patient
+from . import views
 
 admin.site.site_header = 'Beacon Admin'
 admin.site.site_title = 'Admin Portal'
 admin.site.index_title = 'Welcome to the Admin Portal'
+
+admin.autodiscover()
+admin.site.login = views.user_login
+admin.site.logout = views.user_logout
 
 
 @admin.register(User)

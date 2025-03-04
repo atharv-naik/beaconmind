@@ -698,7 +698,7 @@ class PhaseMap:
     _seq = [
         PHQ9Phase().name,
         GAD7Phase().name,
-        ASQPhase().name,
+        # ASQPhase().name,
         MonitoringPhase().name,
     ]
 

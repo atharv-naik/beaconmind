@@ -17,7 +17,7 @@ import os
 load_dotenv(dotenv_path='.env.prod')
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
-BASE_DIR = Path(__file__).resolve().parent.parent
+BASE_DIR = Path(__file__).resolve().parent.parent.parent
 
 
 # Quick-start development settings - unsuitable for production
@@ -93,7 +93,6 @@ TEMPLATES = [
     },
 ]
 
-
 # Storage settings
 STORAGES = {
     'staticfiles': {
@@ -109,14 +108,14 @@ WSGI_APPLICATION = 'chatbot.wsgi.application'
 
 DATABASES = {
     'default': {
-        # 'ENGINE': 'django.db.backends.sqlite3',
-        # 'NAME': BASE_DIR / 'db.sqlite3',
-        'ENGINE': 'django.db.backends.postgresql',
-        'NAME': os.getenv('POSTGRES_NAME'),
-        'USER': os.getenv('POSTGRES_USER'),
-        'PASSWORD': os.getenv('POSTGRES_PASSWORD'),
-        'HOST': os.getenv('POSTGRES_HOST'),
-        'PORT': os.getenv('POSTGRES_PORT'),
+        'ENGINE': 'django.db.backends.sqlite3',
+        'NAME': BASE_DIR / 'db.sqlite3',
+        # 'ENGINE': 'django.db.backends.postgresql',
+        # 'NAME': os.getenv('POSTGRES_NAME'),
+        # 'USER': os.getenv('POSTGRES_USER'),
+        # 'PASSWORD': os.getenv('POSTGRES_PASSWORD'),
+        # 'HOST': os.getenv('POSTGRES_HOST'),
+        # 'PORT': os.getenv('POSTGRES_PORT'),
     }
 }
 
@@ -181,64 +180,118 @@ STATIC_ROOT = BASE_DIR / 'staticfiles'
 # https://docs.djangoproject.com/en/5.0/topics/logging/
 
 LOGGING = {
-    'version': 1,
-    'disable_existing_loggers': False,
-    'formatters': {
-        'verbose': {
-            'format': '{levelname} {asctime} {module} {message}',
-            'style': '{',
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "verbose": {
+            "format": "{levelname} {asctime} {module} {process:d} {thread:d} {message}",
+            "style": "{",
         },
-        'simple': {
-            'format': '{levelname} {message}',
-            'style': '{',
-        },
-    },
-    'handlers': {
-        'file': {
-            'level': 'DEBUG',
-            'class': 'logging.FileHandler',
-            'filename': BASE_DIR / 'logs/debug.log',
-            'formatter': 'verbose',
-        },
-        'console': {
-            'level': 'DEBUG',
-            'class': 'logging.StreamHandler',
-            'formatter': 'simple',
+        "simple": {
+            "format": "{levelname} {message}",
+            "style": "{",
         },
     },
-    'loggers': {
-        'django': {
-            'handlers': ['file', 'console'],
-            'level': 'DEBUG',
-            'propagate': True,
+    "filters": {
+        "require_debug_true": {
+            "()": "django.utils.log.RequireDebugTrue",
         },
-        'django.request': {
-            'handlers': ['file', 'console'],
-            'level': 'ERROR',
-            'propagate': False,
+    },
+    "handlers": {
+        "file": {
+            "level": "ERROR",
+            "class": "logging.handlers.RotatingFileHandler",
+            "filename": os.path.join(BASE_DIR, "logs", "error.log"),
+            "maxBytes": 10*1024*1024, # 10 MB per log file
+            "backupCount": 5,         # keep last 5 log files
+            "formatter": "verbose",
+        },
+        "critical_file": {
+            "level": "CRITICAL",
+            "class": "logging.FileHandler",
+            "filename": os.path.join(BASE_DIR, "logs", "critical.log"),
+            "formatter": "verbose",
+        },
+        "debug_file": {
+            "level": "DEBUG",
+            "class": "logging.FileHandler",
+            "filename": os.path.join(BASE_DIR, "logs", "debug.log"),
+            "formatter": "verbose",
+        },
+        "console": {
+            "level": "INFO",
+            "filters": ["require_debug_true"],
+            "class": "logging.StreamHandler",
+            "formatter": "simple",
+        },
+        "mail_admins": {
+            "level": "ERROR",
+            "class": "django.utils.log.AdminEmailHandler",
+            "include_html": True,
+        },
+    },
+    "loggers": {
+        "django": {
+            "handlers": ["console", "file", "debug_file"],
+            "level": "INFO",
+            "propagate": True,
+        },
+        "django.request": {
+            "handlers": ["mail_admins", "file", "critical_file"],
+            "level": "ERROR",
+            "propagate": False,
+        },
+        "django.security": {
+            "handlers": ["file"],
+            "level": "WARNING",
+            "propagate": False,
+        },
+        "django.server": {
+            "handlers": ["file"],
+            "level": "INFO",
+            "propagate": False,
+        },
+        "rest_framework": {
+            "handlers": ["file", "debug_file"],
+            "level": "DEBUG",
+            "propagate": False,
         },
     },
 }
 
 
+# Email settings
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+EMAIL_HOST = 'smtp.gmail.com'
+EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER", "default@example.com")
+EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD", "")
+EMAIL_PORT = 465
+EMAIL_USE_TLS = False
+EMAIL_USE_SSL = True
+DEFAULT_FROM_EMAIL = f'BeaconMind <{EMAIL_HOST_USER}>'
+SERVER_EMAIL = f'BeaconMind <{EMAIL_HOST_USER}>'
+
+# Server email
+ADMINS = [("Admin", os.getenv("ADMIN_EMAIL", "admin@example.com"))]
+MANAGERS = ADMINS
+
+
 # PWA settings
 PWA_APP_NAME = "BeaconMind"
 PWA_APP_DESCRIPTION = "LLM powered chatbot designed for conducting assessments and monitoring"
-PWA_APP_THEME_COLOR = "#FFFFFF"
+PWA_APP_THEME_COLOR = "#000000"
 PWA_APP_BACKGROUND_COLOR = "#000000"
 PWA_APP_DISPLAY = "standalone"
 PWA_APP_START_URL = "/"
 PWA_APP_ORIENTATION = "portrait"
 PWA_APP_SCOPE = "/"
 PWA_APP_LANG = "en"
-# ICONS
 PWA_APP_ICONS = [
     {
         'src': '/static/logos/logo-160x160.png',
         'sizes': '160x160'
     }
 ]
-# display override
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.0/ref/settings/#default-auto-field

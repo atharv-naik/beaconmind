@@ -18,7 +18,8 @@ FROM python:3.12-alpine
 
 # Set environment variables
 ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1
+    PYTHONUNBUFFERED=1 \
+    ENV=dev
 
 # Set the working directory
 WORKDIR /app

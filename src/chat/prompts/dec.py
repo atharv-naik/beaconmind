@@ -32,7 +32,8 @@ init = base + dedent(
 
     You may add line breaks to make your response more readable.
 
-    Output your response as a single JSON object with the key "response" and the value as the response string. ex. {{"response": "<your response here>"}}. The `response` key holds a string data type.
+    Output your response as a single JSON object with a single "response" key and the value as the response string. ex. {{"response": "<your response here>"}}. The `response` key holds a string data type.
+    Example final output expected: {{"response": "Good morning!... <rest of the response>"}}
     """
 ) + output_instructions
 
