@@ -748,102 +748,13 @@ class PhaseMap:
 
 if __name__ == "__main__":
     from icecream import ic
+    import random, json
 
     phase = PHQ9Phase()
-    ic(phase == PhaseMap.get(PhaseMap.first()))
     phase = ic(PhaseMap.get(PhaseMap.next("assessment.phq9")))
-    # ic(phase)
-    # ic(phase.name)
-    # ic(phase.short_name)
     ic(phase.verbose_name)
-    # ic(phase.description)
-    # ic(phase.questions)
     ic(phase.N)
-    # ic(phase.low)
-    # ic(phase.high)
-    # ic(phase.span)
-    # ic(phase.labels)
-    # ic(phase.cap)
-    # ic(phase.get(1))
-    scores = {
-        "1": {
-            "score": 0,
-            "remark": "The patient enjoys activities and finds pleasure in them.",
-            "snippet": "I enjoy stuff mostly.",
-            "keywords": ["enjoy activities", "positive mood"]
-        },
-        "2": {
-            "score": 2,
-            "remark": "The patient feels down and like a 'loser' due to job placement pressures.",
-            "snippet": "I feel a loser... yet to land a job while my friends have grabbed like 50lpa+ jobs.",
-            "keywords": ["job pressure", "feeling down"]
-        },
-        "3": {
-            "score": 0,
-            "remark": "The patient reports no changes in sleep patterns.",
-            "snippet": "Nothing particular here.",
-            "keywords": ["consistent sleep"]
-        },
-        "4": {
-            "score": 1,
-            "remark": "The patient feels tired frequently but attributes it to being naturally less energetic.",
-            "snippet": "I guess I am always tired... I've always been a lazy person.",
-            "keywords": ["low energy", "natural pace"]
-        },
-        "5": {
-            "score": 0,
-            "remark": "The patient has a consistent appetite and enjoys eating.",
-            "snippet": "I'm a foodie so naturally I eat a lot.",
-            "keywords": ["consistent appetite", "enjoys food"]
-        },
-        "6": {
-            "score": 2,
-            "remark": "The patient feels like a failure due to comparison with peers during placement season.",
-            "snippet": "I feel a loser... my friends have grabbed like 50lpa+ jobs.",
-            "keywords": ["feeling failure", "peer comparison"]
-        },
-        "7": {
-            "score": 0,
-            "remark": "The patient enjoys reading and distracts themselves intentionally with anime.",
-            "snippet": "I love reading... intentionally distract myself by watching excessive anime.",
-            "keywords": ["enjoys reading", "distraction"]
-        },
-        "8": {
-            "score": 0,
-            "remark": "The patient has not noticed restlessness or slow movements.",
-            "snippet": "No no nah.",
-            "keywords": []
-        },
-        "9": {
-            "score": 0,
-            "remark": "The patient does not report thoughts of self-harm or being better off not around.",
-            "snippet": "Not that sort of stuff.",
-            "keywords": []
-        }
-    }
-    # ic(phase.severity(scores))
-    # ic(phase.total_score(scores))
-    # ic(PhaseMap.first())
-    # ic(PhaseMap.get("assessment.phq9"))
 
-    # Debug tests for state transitions
-    # ic(phase.next_q(1, 'y'))
-    # ic(phase.next_q(1, 'n'))
-    # ic(phase.next_q(1, 'o', r=0))
-    # ic(phase.next_q(1, 'o', r=1))
-    # ic(phase.next_q(1, 'o', r=2))
-    # ic(phase.next_q(1, 'o', r=3))
-    # ic(phase.next_q(1, 'c'))
-    # ic(phase.next_q(1, 'c'))
-    # ic(phase.next_q(4, 'o', r=0))
-    # ic(phase.next_q(4, 'o', r=1))
-    # ic(phase.next_q(5, 'y'))
-    # ic(phase.next_q(5, 'n'))
-
-    ic()
-
-    import random, json
-    print("ASQPhase\n")
     phase = ASQPhase()
     ic(json.dumps(phase.get_questions_dict()))
     q_node = phase.get(phase.base_node_id)

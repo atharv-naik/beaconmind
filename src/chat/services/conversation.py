@@ -173,36 +173,6 @@ class ConversationManager:
 
     @staticmethod
     def get_or_create_chat_session(conversation: Conversation) -> tuple[ChatSession, bool]:
-        # last_message = ChatMessage.objects.filter(
-        #     conversation=conversation).order_by('-timestamp').first()
-        # created = False
-        # if last_message:
-        #     if last_message.user_response_timestamp:
-        #         time_inactive = timezone.now() - last_message.user_response_timestamp
-        #     else:
-        #         time_inactive = timezone.now() - last_message.timestamp
-        #     if time_inactive.total_seconds() / 60 > ChatSettings.SESSION_TIMEOUT:
-        #         # check if there is an existing valid session
-        #         last_session = ChatSession.objects.filter(
-        #             conversation=conversation).order_by('-timestamp').first()
-        #         if last_session and last_session.timestamp > last_message.timestamp:
-        #             chat_session = last_session
-        #             chat_session.timestamp = timezone.now()
-        #             chat_session.save(update_fields=['timestamp'])
-        #         else:
-        #             chat_session = ChatSession.objects.create(
-        #                 conversation=conversation)
-        #             created = True
-        #     else:
-        #         chat_session = last_message.chat_session
-        # else:
-        #     chat_session, created = ChatSession.objects.get_or_create(
-        #         conversation=conversation)
-        #     if created:
-        #         chat_session.timestamp = timezone.now()
-        #         chat_session.save(update_fields=['timestamp'])
-        # return chat_session, created
-
         chat_session, created = ChatSession.objects.get_or_create(
             conversation=conversation, 
             status='open',
@@ -225,10 +195,7 @@ class ConversationManager:
                     for assessment in assessments:
                         assessment.status = 'aborted'
                         assessment.save(update_fields=['status'])
-                    # reset patient phase
-                    # conversation.user.patient.phase = PhaseMap.first()
-                    # conversation.user.patient.save(update_fields=['phase'])
-                    ic(PhaseMap.get(PhaseMap.first()).base_node_id)
+
                     chat_session, created = ChatSession.objects.get_or_create(
                         conversation=conversation, 
                         status='open',

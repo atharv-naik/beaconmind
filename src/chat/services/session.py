@@ -3,8 +3,6 @@ import json
 from django.db import transaction
 from django.db.models import Q
 from django.utils import timezone
-from langchain_core.messages.ai import AIMessage
-from langchain_core.runnables.history import RunnableWithMessageHistory
 
 from assessments import definitions
 from assessments.definitions import PhaseMap, BaseAssessmentPhase
@@ -30,7 +28,6 @@ class SessionPipeline:
         self.curr_node = self.curr_phase.get(self.session.node_id)
         self.chat_status = ChatStates.NORMAL
 
-    # new code //////////////////////////////////
     @transaction.atomic
     def trigger_pipeline(self, user_msg: str) -> str:
         user_msg_f = ConversationManager.format_msg(user_msg)
@@ -45,8 +42,6 @@ class SessionPipeline:
             "init": self.session.init,
         }
 
-        ic()
-
         msg = ChatMessage.objects.create(
             user_response=user_msg.strip(),
             conversation=self.conversation,
@@ -56,11 +51,7 @@ class SessionPipeline:
             meta_data=meta
         )
 
-        ic()
-
         if self.session.init:
-
-            ic()
 
             response = self.run_dec_routine(
                 msg, user_msg_f, ChatStates.INIT
@@ -73,8 +64,6 @@ class SessionPipeline:
             response = self.run_dec_routine(
                 msg, user_msg_f, self.chat_status
             )
-        
-        ic()
 
         return response
 
@@ -84,12 +73,9 @@ class SessionPipeline:
         Method to run the evaluation routine
         """
 
-        ic()
-
         user_msg = user_msg.strip()
 
         # invoke eval chain
-        ic()
         eval_response = ChainStore.eval_chain.invoke(
             input={
                 "message": user_msg,
@@ -100,8 +86,6 @@ class SessionPipeline:
             }
         )
 
-        ic()
-
         eval_meta = eval_response.response_metadata
         meta = {
             "eval": {
@@ -109,11 +93,7 @@ class SessionPipeline:
             }
         }
 
-        ic()
-
         state = json.loads(eval_response.content)["response"]
-
-        ic()
 
         assert state in [
             "NORMAL_y", 
@@ -122,8 +102,6 @@ class SessionPipeline:
             "AMBIGUOUS", 
             "CLARIFY"
         ], f"Invalid state: {state} returned by eval chain"
-
-        ic()
 
         if state in ["NORMAL_y", "NORMAL_n"]: 
             
@@ -134,7 +112,6 @@ class SessionPipeline:
             self.session.retries = 0
             self.session.save(update_fields=["retries"])
 
-            ic()
         else: 
             if state in ["DRIFT", "AMBIGUOUS"]:
                 self.chat_status = getattr(ChatStates, state)
@@ -145,7 +122,6 @@ class SessionPipeline:
                 self.session.retries += 1
                 self.session.save(update_fields=["retries"])
 
-                ic()
             else:
                 self.chat_status = ChatStates.CLARIFY
 
@@ -155,10 +131,6 @@ class SessionPipeline:
                 self.session.retries = 0
                 self.session.save(update_fields=["retries"])
 
-                ic()
-
-        ic()
-
         user_marker = {
             "phase": self.curr_phase.name,
             "init": False,
@@ -167,30 +139,23 @@ class SessionPipeline:
             "tr": tr,
         }
 
-        ic()
-
         # transition to next node if any
         next_node = self.curr_phase.next_q(node_id=self.session.node_id, tr=tr, r=self.session.retries)
 
         # IMPORTANT set chat_status to SKIPPED if retries exceed limit set for the node
         # else the dec chains would be out of sync with the current state
         if self.session.retries > self.curr_node.r:
-            ic(self.session.retries, self.curr_node.r)
             self.chat_status = ChatStates.SKIPPED
             
             # reset retries
             self.session.retries = 0
             self.session.save(update_fields=["retries"])
 
-        ic()
-
         if next_node == definitions.END:
 
             # SCORING HAPPENS HERE ///////////////////////////////////////
-            ic()
             if self.curr_phase.supports_scoring:
                 self.run_score_routine(self.curr_phase)
-            ic()
 
             # check for next phase
             next_phase = PhaseMap.next(self.session.phase)
@@ -219,24 +184,12 @@ class SessionPipeline:
             self.session.node_id = next_node.node_id
             self.session.save(update_fields=["node_id"])
 
-            ic()
-
-            try:
-                self.curr_node = self.curr_phase.get(self.session.node_id)
-            except Exception as e:
-                ic(e)
-                raise Exception(f"{e}")
-
-            ic()
+            self.curr_node = self.curr_phase.get(self.session.node_id)
 
         # save message
-        ic()
-
         msg.user_marker.update(user_marker)
         msg.meta_data.update(meta)
         msg.save(update_fields=["user_marker", "meta_data"])
-
-        ic()
 
         return msg
 
@@ -247,23 +200,15 @@ class SessionPipeline:
         """
 
         # invoke dec.{state} chain
-        ic()
-        try:
-            dec_response = getattr(ChainStore, f"dec_{chat_state.lower()}_chain").invoke(
-                input={
-                    "message": user_msg.strip(),
-                    "phase": self.curr_phase.verbose_name,
-                    "question": self.curr_node.text,
-                    "conversation": self.history_manager.get_full_list(),
-                }
-            )
-        except Exception as e:
-            ic(e)
-            raise Exception(f"Error invoking dec_{chat_state.lower()}_chain")
-        ic()
-        ic(dec_response.content)
-        ic(json.loads(dec_response.content))
-        ic(json.loads(dec_response.content)["response"])
+        dec_response = getattr(ChainStore, f"dec_{chat_state.lower()}_chain").invoke(
+            input={
+                "message": user_msg.strip(),
+                "phase": self.curr_phase.verbose_name,
+                "question": self.curr_node.text,
+                "conversation": self.history_manager.get_full_list(),
+            }
+        )
+
         response = json.loads(dec_response.content).get("response", "")
         dec_meta = dec_response.response_metadata
         meta = {
@@ -279,8 +224,6 @@ class SessionPipeline:
             "chat_status": chat_state,
         }
 
-        ic()
-
         # save message
         msg.ai_response = response
         msg.ai_response_timestamp = timezone.now()
@@ -295,16 +238,9 @@ class SessionPipeline:
             ]
         )
 
-        ic()
-
-        try:
-            self.session.last_msg = response
-            self.session.init = False
-            self.session.save(update_fields=["init", "last_msg"])
-        except Exception as e:
-            ic(e)
-
-        ic()
+        self.session.last_msg = response
+        self.session.init = False
+        self.session.save(update_fields=["init", "last_msg"])
 
         if chat_state == ChatStates.CONCLUDE:
             self.session.status = "closed"
@@ -316,32 +252,27 @@ class SessionPipeline:
         """
         Method to run the scoring routine
         """
-        ic()
+        
         qs = self.history_manager.filter_by(
             Q(chat_session_id=self.session.id),
             Q(ai_marker__phase=phase.name) | Q(user_marker__phase=phase.name)
         )
-        ic()
+
         # invoke the score chain
-        try:
-            score_response = ChainStore.score_chain.invoke(
-                input={
-                    "phase": phase.verbose_name,
-                    "questions_json": json.dumps(phase.get_questions_dict()),
-                    "conversation_json": json.dumps(self.history_manager.qs_to_dict(qs)),
-                }
-            )
-        except Exception as e:
-            ic(e)
-            raise Exception("Error invoking score_chain")
-        ic()
+        score_response = ChainStore.score_chain.invoke(
+            input={
+                "phase": phase.verbose_name,
+                "questions_json": json.dumps(phase.get_questions_dict()),
+                "conversation_json": json.dumps(self.history_manager.qs_to_dict(qs)),
+            }
+        )
+        
         score_meta = score_response.response_metadata
         meta = {
             "score": {
                 "meta": score_meta,
             }
         }
-        ic()
         data = json.loads(score_response.content)["response"]
 
         # save assessment records
@@ -350,43 +281,29 @@ class SessionPipeline:
             session=self.session,
             type=phase.name,
         )
-        ic()
-        try:
-            q_data = phase.get_questions_dict()
-            for qid, record in data.items():
-                AssessmentRecord.objects.create(
-                    assessment=assessment,
-                    question_id=qid,
-                    question_text=q_data[qid]["text"],
-                    score=record["score"],
-                    remark=record["remark"],
-                    snippet=record["snippet"],
-                    keywords=record["keywords"],
-                )
-        except Exception as e:
-            ic(e)
-            raise Exception(f"Error saving assessment records")
-        ic()
-        # save assessment result
-        try:
-            ic(data)
-            score = phase.total_score(data)
-            ic()
-            severity = phase.severity(data)
-            ic()
-            AssessmentResult.objects.create(
+        q_data = phase.get_questions_dict()
+        for qid, record in data.items():
+            AssessmentRecord.objects.create(
                 assessment=assessment,
-                score=score,
-                severity=severity,
+                question_id=qid,
+                question_text=q_data[qid]["text"],
+                score=record["score"],
+                remark=record["remark"],
+                snippet=record["snippet"],
+                keywords=record["keywords"],
             )
-        except Exception as e:
-            ic(e)
-            raise Exception(f"Error saving assessment result")
-        ic()
+
+        # save assessment result
+        score = phase.total_score(data)
+        severity = phase.severity(data)
+        AssessmentResult.objects.create(
+            assessment=assessment,
+            score=score,
+            severity=severity,
+        )
         assessment.status = "completed"
         assessment.completed_at = timezone.now()
         assessment.save(update_fields=["status", "completed_at"])
-        ic()
         return
 
 

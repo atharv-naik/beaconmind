@@ -4,7 +4,6 @@ from langchain_core.language_models.chat_models import BaseChatModel
 from langchain_core.prompts import ChatPromptTemplate, MessagesPlaceholder, PromptTemplate
 from langchain_openai.chat_models import ChatOpenAI
 
-from .prompts.old import PromptStore
 from . import prompts
 
 
@@ -79,51 +78,7 @@ class Prompts:
             "test": lambda: BasePrompt(
                 system_init_message="You are a helpful virtual assistant."
             ),
-            "phq9.eval": lambda: BasePrompt(
-                system_init_message=PromptStore.PHQ9_INIT,
-                system_post_message=PromptStore.EVAL
-            ),
-            "phq9.decision": lambda: BasePrompt(
-                system_init_message=PromptStore.PHQ9_INIT,
-                system_post_message=PromptStore.DECISION
-            ),
-            "phq9.score": lambda: BasePrompt(
-                system_init_message=PromptStore.PHQ9_INIT,
-                system_post_message=PromptStore.SCORE,
-                include_human_input=False
-            ),
-            "gad7.eval": lambda: BasePrompt(
-                system_init_message=PromptStore.GAD7_INIT,
-                system_post_message=PromptStore.EVAL
-            ),
-            "gad7.decision": lambda: BasePrompt(
-                system_init_message=PromptStore.GAD7_INIT,
-                system_post_message=PromptStore.DECISION
-            ),
-            "gad7.score": lambda: BasePrompt(
-                system_init_message=PromptStore.GAD7_INIT,
-                system_post_message=PromptStore.SCORE,
-                include_human_input=False
-            ),
-            "monitoring.eval": lambda: BasePrompt(
-                system_init_message=PromptStore.MONITORING_INIT,
-                system_post_message=PromptStore.EVAL
-            ),
-            "monitoring.decision": lambda: BasePrompt(
-                system_init_message=PromptStore.MONITORING_INIT,
-                system_post_message=PromptStore.DECISION
-            ),
-            "monitoring.score": lambda: BasePrompt(
-                system_init_message=PromptStore.MONITORING_INIT,
-                system_post_message=PromptStore.SCORE,
-                include_human_input=False
-            ),
-            "conclude": lambda: BasePrompt(                 # phase agnostic chain
-                system_post_message=PromptStore.CONCLUDE
-            ),
-            
 
-            # New prompts
             "dec.init": lambda: BasePrompt(
                 template=prompts.dec.init
             ),
@@ -203,69 +158,6 @@ class ChainStore:
     Predefined chains for convenience
     """
 
-    phq9_eval_chain = (
-        ChainBuilder()
-        .with_model("gpt-4o")
-        .with_prompt("phq9.eval")
-        .build()
-    )
-    phq9_decision_chain = (
-        ChainBuilder()
-        .with_model("gpt-4o")
-        .with_prompt("phq9.decision")
-        .build()
-    )
-    phq9_score_chain = (
-        ChainBuilder()
-        .with_model("gpt-4o")
-        .with_prompt("phq9.score")
-        .build()
-    )
-    gad7_eval_chain = (
-        ChainBuilder()
-        .with_model("gpt-4o")
-        .with_prompt("gad7.eval")
-        .build()
-    )
-    gad7_decision_chain = (
-        ChainBuilder()
-        .with_model("gpt-4o")
-        .with_prompt("gad7.decision")
-        .build()
-    )
-    gad7_score_chain = (
-        ChainBuilder()
-        .with_model("gpt-4o")
-        .with_prompt("gad7.score")
-        .build()
-    )
-    monitoring_eval_chain = (
-        ChainBuilder()
-        .with_model("gpt-4o")
-        .with_prompt("monitoring.eval")
-        .build()
-    )
-    monitoring_decision_chain = (
-        ChainBuilder()
-        .with_model("gpt-4o")
-        .with_prompt("monitoring.decision")
-        .build()
-    )
-    monitoring_score_chain = (
-        ChainBuilder()
-        .with_model("gpt-4o")
-        .with_prompt("monitoring.score")
-        .build()
-    )
-    conclude_chain = (
-        ChainBuilder()
-        .with_model("gpt-4o")
-        .with_prompt("conclude")
-        .build()
-    )
-
-
-    # New chains
     dec_init_chain = (
         ChainBuilder()
         .with_model("gpt-4o")
@@ -320,27 +212,3 @@ class ChainStore:
         .with_prompt("score")
         .build()
     )
-    
-    @staticmethod
-    def get(mode, phase=None):
-        """
-        Retrieve a predefined chain from ChainStore.
-
-        Raises ValueError if chain is not found.
-        """
-        if phase:
-            chain_name = f"{phase}_{mode}_chain"
-        else:
-            chain_name = f"{mode}_chain"
-
-        if not hasattr(ChainStore, chain_name):
-            valid_chains = [
-                attr for attr in dir(ChainStore)
-                if attr.endswith("_chain") and not attr.startswith("__")
-            ]
-            raise ValueError(
-                f"Chain not found: {chain_name}. "
-                f"Available chains are: {', '.join(valid_chains)}"
-            )
-        
-        return getattr(ChainStore, chain_name)
