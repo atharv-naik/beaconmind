@@ -1,15 +1,6 @@
 name: beaconmind 
 
 services:
-  # watchtower:
-  #   image: containrrr/watchtower
-  #   command:
-  #     - --label-enable=true
-  #     - --interval=30
-  #     - --rolling-restart=true
-  #   volumes:
-  #     - /var/run/docker.sock:/var/run/docker.sock
-
   db:
     image: postgres:16.3-alpine3.20
     networks:
@@ -26,96 +17,30 @@ services:
       retries: 5
     volumes:
       - ./db/scripts:/docker-entrypoint-initdb.d
-      - pg-data:/var/lib/postgresql/data # Persisting data
+      - pg-data:/var/lib/postgresql/data
 
   beacon:
-    image: ghcr.io/atharv-naik/beacon.fix.staging:latest
+    image: ghcr.io/atharv-naik/beacon:staging
     networks:
       - proxy
     restart: always
     labels:
-      # - traefik.enable=true
-      # - traefik.port=80
-      # - traefik.http.routers.app.rule=Host(`beacon.docker.localhost`)
-      # - traefik.http.routers.app.entrypoints=web
-      # - traefik.http.services.app.loadbalancer.server.port=8000
-      # - traefik.http.routers.app.entrypoints=websecure
-      # - traefik.http.routers.app.tls.certresolver=myresolver
       - com.centurylinklabs.watchtower.enable=true
-    command: sh  -c "python manage.py migrate --noinput && gunicorn chatbot.wsgi:application --bind 0.0.0.0:8000"
+    command: sh  -c "python manage.py migrate --noinput && gunicorn beaconmind.wsgi:application --bind 0.0.0.0:8000"
     ports:
       - "8000:8000"
     env_file: 
       - ./app/.env.prod
     volumes:
       - static:/app/static
-      - pg-data:/var/lib/postgresql/data # Persisting data
+      - pg-data:/var/lib/postgresql/data
     depends_on:
       db:
         condition: service_healthy
 
-  # reverse-proxy:
-  #   image: traefik:v3.3
-  #   networks:
-  #     - proxy
-  #   command:
-  #     # - --api=true
-  #     # - --api.dashboard=true
-  #     - --log.level=INFO
-  #     - --accesslog=true
-  #     - --providers.docker=true
-  #     - --providers.docker.exposedbydefault=false
-  #     - --providers.docker.network=proxy
-  #     - --entryPoints.websecure.address=:443
-  #     - --certificatesresolvers.myresolver.acme.tlschallenge=true
-  #     - --certificatesresolvers.myresolver.acme.email=me@atharvnaik.com
-  #     - --certificatesresolvers.myresolver.acme.storage=/letsencrypt/acme.json
-  #     - --entrypoints.web.address=:80
-  #     - --entrypoints.web.http.redirections.entrypoint.to=websecure
-  #     - --entrypoints.web.http.redirections.entrypoint.scheme=https
-  #   ports:
-  #     - "80:80"
-  #     - "443:443"
-  #   volumes:
-  #     - /var/run/docker.sock:/var/run/docker.sock
-  #     - letsencrypt:/letsencrypt
-    # labels:
-    #   - traefik.enable=true
-    #   - traefik.http.routers.mydashboard.tls=true
-    #   - traefik.http.routers.mydashboard.rule=Host(`traefik.atharvnaik.com`)
-    #   - traefik.http.routers.mydashboard.entrypoints=websecure
-    #   - traefik.http.routers.mydashboard.tls.certresolver=myresolver
-    #   - traefik.http.services.mydashboard.loadbalancer.server.port=8080
-    #   - traefik.http.routers.mydashboard.service=api@internal
-    #   - traefik.http.routers.mydashboard.middlewares=myauth
-    #   - traefik.http.middlewares.myauth.basicauth.users=admin:$$apr1$$1AVcBdOm$$iqwqmrS2ESKdRgzkljvMw.
-
-  # pgadmin:
-  #   image: dpage/pgadmin4
-  #   restart: always
-  #   networks:
-  #     - proxy
-  #   env_file: 
-  #     - ./pgadmin/.env
-  #   ports:
-  #     - "5050:80"
-  #   volumes:
-  #     - pgadmin-data:/var/lib/pgadmin
-  #   labels:
-  #     - traefik.enable=true
-  #     - traefik.http.routers.pgadmin.rule=Host(`pgadmin.beaconmind.in`) || Host(`pgadmin.atharvnaik.com`)
-  #     - traefik.http.routers.pgadmin.entrypoints=websecure
-  #     - traefik.http.routers.pgadmin.tls.certresolver=myresolver
-  #     - traefik.http.services.pgadmin.loadbalancer.server.port=80
-  #   depends_on:
-  #     - db
-
 volumes:
   static:
   pg-data:
-  # letsencrypt:
-  #   name: letsencrypt
-  # pgadmin-data:
 
 networks:
   proxy:
