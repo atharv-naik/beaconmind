@@ -44,7 +44,7 @@ MIDDLEWARE = [
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
 ]
 
-ROOT_URLCONF = 'chatbot.urls'
+ROOT_URLCONF = 'beaconmind.urls'
 
 TEMPLATES = [
     {
@@ -69,7 +69,7 @@ STORAGES = {
     },
 }
 
-WSGI_APPLICATION = 'chatbot.wsgi.application'
+WSGI_APPLICATION = 'beaconmind.wsgi.application'
 
 
 # Database
@@ -253,7 +253,7 @@ MANAGERS = ADMINS
 
 # PWA settings
 PWA_APP_NAME = "BeaconMind"
-PWA_APP_DESCRIPTION = "LLM powered chatbot designed for conducting assessments and monitoring"
+PWA_APP_DESCRIPTION = "LLM powered beaconmind designed for conducting assessments and monitoring"
 PWA_APP_THEME_COLOR = "#000000"
 PWA_APP_BACKGROUND_COLOR = "#000000"
 PWA_APP_DISPLAY = "standalone"
