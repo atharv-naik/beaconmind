@@ -51,7 +51,7 @@ class LoginView(ObtainAuthToken):
 
             return response
         except Exception as e:
-            return Response({'detail': f'{e.detail['non_field_errors'][0]}'}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({'detail': f'Invalid credentials. {str(e)}'}, status=status.HTTP_400_BAD_REQUEST)
 
 
 @api_view(['GET', 'POST'])

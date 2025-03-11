@@ -6,11 +6,30 @@ from abc import ABC, abstractmethod
 from typing import Any, Dict, Iterable, List, Tuple, Union
 
 
-END = "END"
+class ENDNode:
+    id = "END"
+    node_id = id
+    qid = id
+
+    def __str__(self):
+        return "END"
+    
+    def __repr__(self):
+        return "END"
 
 
 class QuestionNode:
-    def __init__(self, node_id: str, qid: Union[int, str], text: str, y: Union[int, str], n: Union[int, str], o: Union[int, str], r: int = 2):
+    def __init__(
+            self,
+            node_id: str,
+            qid: Union[int, str],
+            text: str,
+            y: Union[int, str],
+            n: Union[int, str],
+            o: Union[int, str],
+            r: int = 2,
+            help_text: str = "",
+    ):
         self.node_id = node_id
         self.qid = qid
         self.text = text
@@ -30,7 +49,23 @@ class QuestionNode:
 
     def __repr__(self):
         return f"<QuestionNode(node_id={self.node_id}, qid={self.qid}, text={self.text[:20]}...)>"
+    
+    def __eq__(self, other):
+        if isinstance(other, QuestionNode):
+            return self.node_id == other.node_id
+        elif isinstance(other, str):
+            return self.node_id == other == ENDNode.id
+        return False
 
+END = QuestionNode(
+    node_id="END",
+    qid="END",
+    text="END",
+    y="END",
+    n="END",
+    o="END",
+    r=0
+)
 
 class BaseAssessmentPhase(ABC):
     """Abstract base class for assessment phase details."""
@@ -139,7 +174,7 @@ class BaseAssessmentPhase(ABC):
         """Get the base question node ID."""
         return "1"
 
-    def next_q(self, node_id: str, tr: str, r: int = 1) -> Union[QuestionNode, str]:
+    def next_q(self, node_id: str, tr: str, r: int = 1) -> QuestionNode:
         node = self.get(node_id)
         nxt = {
             'y': node.y(),
@@ -679,7 +714,7 @@ class ASQPhase(BaseAssessmentPhase):
 
         if all(data[str(qid)]["score"] == 0 for qid in data.keys()):
             return "Negative"
-        if data["5"]["score"] == 1:
+        if "5" in data.keys() and data["5"]["score"] == 1:
             return "Acute positive screen"
         return "Non-acute positive screen"
 
@@ -702,7 +737,7 @@ class PhaseMap:
         MonitoringPhase().name,
     ]
 
-    _mapper = {
+    _mapper : dict[str, BaseAssessmentPhase] = {
         PHQ9Phase().name: PHQ9Phase(),
         GAD7Phase().name: GAD7Phase(),
         MonitoringPhase().name: MonitoringPhase(),
