@@ -4,6 +4,7 @@ from rest_framework.test import APITestCase, APIClient
 from rest_framework import status
 from rest_framework.authtoken.models import Token
 from .models import Patient, Doctor
+from faker import Faker
 
 User = get_user_model()
 
@@ -16,11 +17,26 @@ class AccountsAPITestCase(APITestCase):
         self.login_url = reverse('accounts:api-get-auth')
         self.logout_url = reverse('accounts:api-logout')
         self.password_reset_url = reverse('accounts:api-password-reset')
+        self.faker = Faker()
 
-        self.staff_user = User.objects.create_user(username='staffuser', password='staffpass', role='staff')
-        self.doctor_user = User.objects.create_user(username
-            ='doctoruser', password='doctorpass', role='doctor')
-        self.patient_user = User.objects.create_user(username='patientuser', password='patientpass', role='patient')
+        self.staff_user = User.objects.create_user(
+            username='staffuser',
+            email=self.faker.email(),
+            password='staffpass',
+            role='staff'
+        )
+        self.doctor_user = User.objects.create_user(
+            username='doctoruser', 
+            email=self.faker.email(),
+            password='doctorpass', 
+            role='doctor'
+        )
+        self.patient_user = User.objects.create_user(
+            username='patientuser',
+            email=self.faker.email(),
+            password='patientpass',
+            role='patient'
+        )
         self.staff_token = Token.objects.create(user=self.staff_user)
         self.doctor_token = Token.objects.create(user=self.doctor_user)
         self.patient_token = Token.objects.create(user=self.patient_user)
@@ -28,13 +44,14 @@ class AccountsAPITestCase(APITestCase):
     def test_register_and_login_new_patient(self):
         data = {
             'username': 'newpatient',
-            'email': 'newpatient@example.com',
+            'email': self.faker.email(),
             'password1': 'strongpass123',
             'password2': 'strongpass123',
             'role': 'patient'
         }
         response = self.client.post(self.register_url, data, format='json')
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+        self.assertIn('token', response.data)
         self.assertTrue(User.objects.filter(username='newpatient').exists())
 
         data = {'username': 'newpatient', 'password': 'strongpass123'}
@@ -46,10 +63,10 @@ class AccountsAPITestCase(APITestCase):
     def test_valid_roles_created_after_register(self):
         data = {
             'username': 'newstaff',
-            'email': 'test@test.com',
+            'email': self.faker.email(),
             'password1': 'strongpass123',
             'password2': 'strongpass123',
-            'phone': '123456789',
+            'phone': '1234567890',
             'address': '123 Test St',
             'role': 'staff'
         }
@@ -58,7 +75,7 @@ class AccountsAPITestCase(APITestCase):
         self.assertTrue(User.objects.filter(username='newstaff').exists())
         self.assertEqual(User.objects.get(username='newstaff').role, 'staff')
 
-        data.update({'username': 'newdoctor', 'role': 'doctor'})
+        data.update({'username': 'newdoctor', 'role': 'doctor', 'email': self.faker.email()})
         response = self.client.post(self.register_url, data, format='json')
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertTrue(User.objects.filter(username='newdoctor').exists())
@@ -66,7 +83,7 @@ class AccountsAPITestCase(APITestCase):
         self.assertTrue(Doctor.objects.filter(user=User.objects.get(username='newdoctor')).exists())
         self.assertFalse(Patient.objects.filter(user=User.objects.get(username='newdoctor')).exists())
 
-        data.update({'username': 'newpatient', 'role': 'patient'})
+        data.update({'username': 'newpatient', 'role': 'patient', 'email': self.faker.email()})
         response = self.client.post(self.register_url, data, format='json')
         self.assertEqual(response.status_code, status.HTTP_201_CREATED)
         self.assertTrue(User.objects.filter(username='newpatient').exists())
@@ -78,9 +95,9 @@ class AccountsAPITestCase(APITestCase):
     def test_login_valid_user(self):
         data = {'username': 'staffuser', 'password': 'staffpass'}
         response = self.client.post(self.login_url, data, format='json')
-        self.staff_token = response.data['token']
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.assertIn('token', response.data)
+        self.staff_token = response.data['token']
 
         data = {'username': 'doctoruser', 'password': 'doctorpass'}
         response = self.client.post(self.login_url, data, format='json')
@@ -124,3 +141,66 @@ class AccountsAPITestCase(APITestCase):
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.staff_user.refresh_from_db()
         self.assertTrue(self.staff_user.check_password('newstrongpass'))
+    
+    def test_get_user_profile(self):
+        data = {
+            'username': 'test',
+            'email': self.faker.email(),
+            'password1': 'strongpass123',
+            'password2': 'strongpass123',
+            'role': 'patient',
+            'phone': '1234567890',
+            'address': '123 Test St',
+        }
+
+        response = self.client.post(self.register_url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+        response = self.client.post(self.login_url, {'username': 'test', 'password': 'strongpass123'}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        self.client.credentials(HTTP_AUTHORIZATION=f'Token {response.data["token"]}')
+        response = self.client.get(reverse('accounts:api-profile'))
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        user = User.objects.get(username='test')
+        self.assertEqual(data['username'], user.username)
+        self.assertEqual(data['email'], user.email)
+        self.assertEqual(data['phone'], str(user.phone.national_number))
+        self.assertEqual(data['address'], user.address)
+        self.assertEqual(data['role'], user.role)
+
+        
+    def test_update_user_profile(self):
+        data = {
+            'username': 'test',
+            'email': 'email_before_edit@test.com',
+            'password1': 'strongpass123',
+            'password2': 'strongpass123',
+            'role': 'patient',
+            'phone': '1234567890',
+            'address': '123 Test St',
+        }
+
+        response = self.client.post(self.register_url, data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_201_CREATED)
+
+        response = self.client.post(self.login_url, {'username': 'test', 'password': 'strongpass123'}, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        self.client.credentials(HTTP_AUTHORIZATION=f'Token {response.data["token"]}')
+
+        data.update({
+            'email': 'updated@test.com',
+            'phone': '9876543210',
+            'address': '987 Test St',
+        })
+
+        response = self.client.put(reverse('accounts:api-profile'), data, format='json')
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+
+        user = User.objects.get(username='test')
+        self.assertEqual(user.email, data['email'])
+        self.assertEqual(str(user.phone.national_number), data['phone'])
+        self.assertEqual(user.address, data['address'])
+

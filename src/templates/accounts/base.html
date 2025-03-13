@@ -63,8 +63,7 @@
 
             min-width: 400px;
             max-width: 500px;
-            min-height: 400px;
-            aspect-ratio: 400/450;
+            
             overflow-y: auto;
 
             scrollbar-width: none;
@@ -75,6 +74,14 @@
             background: #c2afbf6c;
             background: rgba(220, 220, 220, 0.25);
             backdrop-filter: blur(10px);
+        }
+
+        @media screen and (max-width: 550px) {
+            .container {
+                min-width: unset;
+                max-width: unset;
+                aspect-ratio: unset;
+            }
         }
 
         form {
@@ -162,14 +169,25 @@
             background: transparent;
         }
 
-        .material-icons:not(.err) {
-            position: absolute;
-            left: 10px;
+        .icon:not(.err) {
             font-size: 20px;
             color: #999;
             transition: color 0.3s;
-
+            
             color: #333;
+        }
+        .icon.left {
+            position: absolute;
+            right: unset;
+            left: 10px;
+        }
+        .icon.right {
+            position: absolute;
+            left: unset;
+            right: 10px;
+        }
+        .cursor-pointer {
+            cursor: pointer;
         }
 
         .form-inline {
@@ -181,7 +199,7 @@
             width: 100%;
         }
 
-        .form-inline:focus-within .material-icons {
+        .form-inline:focus-within .icon {
             color: var(--accent-primary);
         }
 
@@ -205,7 +223,7 @@
 
         }
 
-        .non-field-errors .material-icons {
+        .non-field-errors .icon {
             color: #f00;
             font-size: 20px;
             margin-right: 10px;
@@ -279,7 +297,7 @@
         }
         
         /* Add an icon inside the select field */
-        .select-wrapper .material-icons {
+        .select-wrapper .icon {
             position: absolute;
             left: 10px;
             top: 50%;

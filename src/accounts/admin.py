@@ -9,8 +9,8 @@ admin.site.site_title = 'Admin Portal'
 admin.site.index_title = 'Welcome to the Admin Portal'
 
 admin.autodiscover()
-admin.site.login = views.user_login
-admin.site.logout = views.user_logout
+admin.site.login = views.web.user_login
+admin.site.logout = views.web.user_logout
 
 
 @admin.register(User)

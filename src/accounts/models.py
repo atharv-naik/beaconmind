@@ -8,7 +8,7 @@ from phonenumber_field.modelfields import PhoneNumberField
 
 class User(AbstractUser):
     first_name = models.CharField(max_length=30, default="Anonymous", null=True, blank=True)
-    email = models.EmailField("Email Address", validators=[EmailValidator()])
+    email = models.EmailField("Email Address", validators=[EmailValidator()], unique=True)
     phone = PhoneNumberField(region='IN', blank=True, null=True)
     address = models.TextField(blank=True, null=True)
     ROLE_CHOICES = (

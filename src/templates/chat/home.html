@@ -153,7 +153,30 @@
         padding-top: 10px;
         display: flex;
         align-items: flex-end;
+        justify-content: center;
         width: min(800px, 100%);
+      }
+      .input-container.slide-down {
+        animation: slide-down 0.5s forwards;
+      }
+      @keyframes slide-down {
+        0% {
+          transform: translateY(0);
+        }
+        100% {
+          transform: translateY(200%);
+        }
+      }
+      .input-container.slide-up {
+        animation: slide-up 0.5s forwards;
+      }
+      @keyframes slide-up {
+        0% {
+          transform: translateY(200%);
+        }
+        100% {
+          transform: translateY(0);
+        }
       }
       .input-container input {
         flex-grow: 1;
@@ -526,14 +549,32 @@
       }
       .btn-right {
         margin-left: auto;
-        background-color:rgba(255, 64, 0, 0.77);
+        background-color:#ff4000c4;
         color: black;
       }
       .popup-btn:hover {
         background-color: #555;
       }
       .btn-right:hover {
-        background-color: rgb(255, 64, 0);
+        background-color: #ff4000;
+      }
+      .action-btn {
+        border: none;
+        padding: 10px 20px;
+        border-radius: 50px;
+        cursor: pointer;
+        background-color: #51a700;
+        color: black;
+        text-align: center;
+        font-family: inherit;
+        position: absolute;
+        top: -50px;
+        left: 50%;
+        transform: translateX(-50%);
+        transition: all 0.5s;
+      }
+      .action-btn.appear {
+        top: 70px;
       }
     </style>
   </head>
@@ -699,6 +740,14 @@
           <span id="session-id"></span>
         </span>
       </div>
+
+      <div class="actions">
+        <button id="restart-session" class="action-btn" onclick="openPopup(
+          'new_session', 'This will start a new blank session. Continue?')"
+          >
+          Session ended. Restart?
+        </button>
+      </div>
     </div>
 
     <script src="https://cdn.jsdelivr.net/npm/showdown@1.9.1/dist/showdown.min.js"></script>
@@ -863,6 +912,8 @@
 
           setSessionDetails(data.session);
 
+          handleChatActions(data.action_flag);
+
           data.data.forEach((msg) => {
             const user_timestamp = new Date(
               msg.user_response_timestamp
@@ -928,6 +979,18 @@
         metaInfo.textContent = `Session ID: ${session.id}`;
       }
 
+
+      function handleChatActions(action_flag) {
+        console.log(action_flag);
+        if (action_flag === "end_session") {
+          const actionBtn = document.querySelector(".action-btn");
+          actionBtn.classList.add("appear");
+          const inputContainer = document.querySelector(".input-container");
+          inputContainer.classList.remove("slide-up");
+          inputContainer.classList.add("slide-down");
+        }
+      }
+
       async function sendMessage(retry = false) {
         console.log(retry);
         var messageText;
@@ -974,6 +1037,8 @@
             data.ai_response,
             new Date()
           );
+          console.log(data);
+          handleChatActions(data.action_flag)
         } catch (error) {
           console.error("Failed to send message:\n", error);
           showErrorMessage(waitingDots);
@@ -1085,6 +1150,9 @@
         }
         if (action === "abort") {
           // TODO
+        }
+        if (action === "new_session") {
+          location.reload();
         }
         closePopup();
       }

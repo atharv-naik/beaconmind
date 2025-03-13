@@ -2,11 +2,13 @@ from rest_framework import serializers
 from django.contrib.auth import get_user_model
 from rest_framework.authtoken.models import Token
 from django.contrib.auth.password_validation import validate_password
+from phonenumber_field.serializerfields import PhoneNumberField
 
 
 User = get_user_model()
 
 class UserSerializer(serializers.ModelSerializer):
+    phone = PhoneNumberField(region='IN', required=False, allow_blank=True)
     class Meta:
         model = User
         fields = ('id', 'username', 'email', 'phone', 'address', 'role', 'password')
@@ -23,13 +25,15 @@ class UserSerializer(serializers.ModelSerializer):
 
 
 class UserRegisterSerializer(serializers.ModelSerializer):
-    phone = serializers.CharField(required=False, allow_blank=True)
+    phone = PhoneNumberField(region='IN', required=False, allow_blank=True)
     address = serializers.CharField(required=False, allow_blank=True)
     email = serializers.EmailField(required=True)
     username = serializers.CharField(required=True)
     password1 = serializers.CharField(write_only=True, required=True)
     password2 = serializers.CharField(write_only=True, required=True)
     role = serializers.ChoiceField(choices=User.ROLE_CHOICES, initial='patient', required=True) # role restrictions are enforced on the frontend
+
+    token = serializers.CharField(read_only=True)
 
     def validate(self, data):
         if data['password1'] != data['password2']:
@@ -38,11 +42,13 @@ class UserRegisterSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = User
-        fields = ['username', 'email', 'phone', 'address', 'password1', 'password2', 'role']
+        fields = ['username', 'email', 'phone', 'address', 'password1', 'password2', 'role', 'token']
     
     def create(self, validated_data):
         user_data = {key: validated_data[key] for key in validated_data if key != 'password1' and key != 'password2'}
         user = User.objects.create_user(**user_data, password=validated_data['password1'])
+
+        Token.objects.get_or_create(user=user)
         return user
 
 class PasswordResetSerializer(serializers.Serializer):
@@ -54,3 +60,13 @@ class PasswordResetSerializer(serializers.Serializer):
         if not user.check_password(data['old_password']):
             raise serializers.ValidationError("Old password is incorrect.")
         return data
+
+
+class PasswordResetRequestSerializer(serializers.Serializer):
+    email = serializers.EmailField()
+
+    def validate_email(self, value):
+        if not User.objects.filter(email=value).exists():
+            raise serializers.ValidationError("User with this email does not exist.")
+        return value
+

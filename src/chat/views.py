@@ -7,6 +7,7 @@ from rest_framework.permissions import IsAuthenticated
 from rest_framework.response import Response
 from .services.conversation import ConversationManager
 from .services.session import SessionPipeline
+from .services.constants import Actions
 
 
 @allow_only(['patient'])
@@ -29,16 +30,24 @@ def chat(request):
         # chat_obj = pipeline.history_manager.get_full_qs()
         chat_obj = pipeline.history_manager.get_from_session()
         chat = ChatMessageSerializer(chat_obj, many=True)
-        return Response({'data': chat.data, 'session': session_data.data}, status=200)
+        action_flag = Actions.get_action_flag(chat_session.status)
+        return Response({'data': chat.data, 'session': session_data.data, 'action_flag': action_flag}, status=200)
 
     elif request.method == 'POST':
         user_response = request.data.get('query', '')
         if not user_response:
             return Response({'error': 'Invalid request'}, status=400)
         try:
-            response = pipeline.trigger_pipeline(user_response)
+            response, chat_state = pipeline.trigger_pipeline(user_response)
+            action_flag = Actions.get_action_flag(chat_state)
         except Exception as e:
             return Response({'error': e}, status=500)
-        return Response({'ai_response': response, 'session': session_data.data}, status=200)
+        return Response({
+                'ai_response': response,
+                'session': session_data.data,
+                'action_flag': action_flag,
+            },
+            status=200
+        )
 
     return Response({'error': 'Invalid request'}, status=400)

@@ -8,7 +8,7 @@
         height: unset;
         aspect-ratio: unset;
     }
-    .material-icons.right {
+    .icon.right {
         left: unset;
         right: 10px;
         cursor: pointer;
@@ -63,7 +63,7 @@
 
     {% if form.non_field_errors %}
     <div class="non-field-errors">
-        <span class="material-icons err">error</span>
+        <span class="material-icons icon left err">error</span>
         <div class="error">
             {% for error in form.non_field_errors %}
                 <p>{{ error }}</p>
@@ -80,7 +80,7 @@
     <div class="form-group">
         {% comment %} <label for="username">Username</label> {% endcomment %}
         <div class="form-inline">
-            <span class="material-icons">person</span>
+            <span class="material-icons icon left">person</span>
             <input type="text" id="username" name="username" required placeholder={{ form.username.label }}>
         </div>
         {% if form.username.errors %}
@@ -92,7 +92,7 @@
 
     <div class="form-group">
         <div class="form-inline">
-            <span class="material-icons">email</span>
+            <span class="material-icons icon left">email</span>
             <input type="email" id="email" name="email" required placeholder={{ form.email.label }}>
         </div>
 
@@ -105,7 +105,7 @@
 
     <div class="form-group">
         <div class="form-inline">
-            <span class="material-icons">phone</span>
+            <span class="material-icons icon left">phone</span>
             <input type="text" id="phone" name="phone" required placeholder={{ form.phone.label }}>
         </div>
 
@@ -120,7 +120,7 @@
 <div class="col-2">
     <div class="form-group">
         <div class="form-inline">
-            <span class="material-icons">home</span>
+            <span class="material-icons icon left">home</span>
             <textarea id="address" name="address" placeholder={{ form.address.label }}></textarea>
         </div>
         
@@ -135,8 +135,9 @@
 
     <div class="form-group">
         <div class="form-inline">
-            <span class="material-icons">lock</span>
+            <span class="material-icons icon left">lock</span>
             <input type="password" id="password1" name="password1" autocomplete required placeholder={{ form.password1.label }}>
+            <span class="material-icons icon right cursor-pointer toggle-password" onclick="togglePasswordVisibility(this)">visibility_off</span>
         </div>
         
         {% if form.password1.errors %}
@@ -148,8 +149,9 @@
 
     <div class="form-group">
         <div class="form-inline">
-            <span class="material-icons">lock</span>
+            <span class="material-icons icon left">lock</span>
             <input type="password" id="password2" name="password2" autocomplete required placeholder={{ form.password2.label }}>
+            <span class="material-icons icon right cursor-pointer toggle-password" onclick="togglePasswordVisibility(this)">visibility_off</span>
         </div>
 
         <div id="password-error" class="error"></div>
@@ -176,7 +178,7 @@
                     </option>
                     {% endfor %}
                 </select>
-                <span class="material-icons">assignment_ind</span>
+                <span class="material-icons icon left">assignment_ind</span>
             </div>
 
             {% if form.role.errors %}
@@ -187,21 +189,24 @@
         </div>
     {% endif %}
 
-
+    
     <div class="agreement form-group">
         <label for="agreement" class="form-control">
             <input type="checkbox" id="agreement" name="agreement" required>
             <span> I agree to the <a href="#">terms and conditions</a><span>
-        </label>
+            </label>
+        </div>
+
+        
+        <button type="submit" id="submit-btn" hidden>Register</button>
+    </form>
+    
+    <div class="lg-info">
+        <p>Already have an account? <a href="{% url 'accounts:login' %}">Login</a></p>
     </div>
-
-
-    <button type="submit" id="submit-btn" hidden>Register</button>
-</form>
-
-<div class="lg-info">
-    <p>Already have an account? <a href="{% url 'accounts:login' %}">Login</a></p>
 </div>
+
+{% endblock %}
 
 {% block extra_scripts %}
 <script>
@@ -219,10 +224,34 @@
                 passwordError.textContent = "";
             }
         });
+
+        // password validations
+        password1.addEventListener("input", function () {
+            if (password1.value.length < 5) {
+                password1.setCustomValidity("Password must be at least 5 characters long.");
+            }
+            else if (password1.value.length > 50) {
+                password1.setCustomValidity("Password must be at most 50 characters long.");
+            }
+            else if (password1.value === username.value || password1.value === email.value) {
+                password1.setCustomValidity("Password must be different from username.");
+            }
+            else {
+                password1.setCustomValidity("");
+            }
+        });
+
     });
+    const togglePasswordVisibility = (element) => {
+        const input = element.previousElementSibling;
+        if (input.type === "password") {
+            input.type = "text";
+            element.textContent = "visibility";
+        } else {
+            input.type = "password";
+            element.textContent = "visibility_off";
+        }
+    };
 </script>
 {% endblock %}
 
-</div>
-
-{% endblock %}

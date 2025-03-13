@@ -1,4 +1,5 @@
 import json
+from typing import Tuple
 
 from django.db import transaction
 from django.db.models import Q
@@ -29,7 +30,7 @@ class SessionPipeline:
         self.chat_status = ChatStates.NORMAL
 
     @transaction.atomic
-    def trigger_pipeline(self, user_msg: str) -> str:
+    def trigger_pipeline(self, user_msg: str) -> Tuple[str, str]:
         user_msg_f = ConversationManager.format_msg(user_msg)
         user_msg_timestamp = timezone.now()
 
@@ -65,7 +66,7 @@ class SessionPipeline:
                 msg, user_msg_f, self.chat_status
             )
 
-        return response
+        return response, self.chat_status
 
 
     def run_eval_routine(self, msg: ChatMessage, user_msg: str) -> str:

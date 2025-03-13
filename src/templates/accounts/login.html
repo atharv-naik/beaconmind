@@ -12,7 +12,7 @@
         {% comment %} max-height: 320px; {% endcomment %}
         {% comment %} aspect-ratio: 400/320; {% endcomment %}
     }
-    .material-icons.right {
+    .icon.right {
         left: unset;
         right: 10px;
         cursor: pointer;
@@ -64,7 +64,7 @@
 
     {% if form.non_field_errors %}
     <div class="non-field-errors">
-        <span class="material-icons err">error</span>
+        <span class="material-icons icon left err">error</span>
         <div class="error">
             {% for error in form.non_field_errors %}
                 <p>{{ error }}</p>
@@ -75,7 +75,7 @@
 
     <div class="form-group">
         <div class="form-inline">
-            <span class="material-icons">person</span>
+            <span class="material-icons icon left">person</span>
             <input type="text" id="username" name="username" required placeholder={{ form.username.label }}>
         </div>
 
@@ -88,12 +88,14 @@
 
     <div class="form-group">
         <div class="form-inline">
-            <span class="material-icons">lock</span>
+            <span class="material-icons icon left">lock</span>
             <input type="password" id="password" name="password" autocomplete required placeholder={{ form.password.label }}>
-            <span class="material-icons right toggle-password" onclick="togglePasswordVisibility()">visibility_off</span>
+            <span class="material-icons icon right cursor-pointer toggle-password" onclick="togglePasswordVisibility()">visibility_off</span>
         </div>
         <div class="forgot-password">
-            <a href="#">Forgot password?</a>
+            <a href="{% url 'accounts:password-reset-request' %}">
+                Forgot password?
+            </a>
         </div>
         <div id="password-error" class="error">
             {% if form.password.errors %}
