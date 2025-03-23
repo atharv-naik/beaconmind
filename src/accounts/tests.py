@@ -1,6 +1,11 @@
 from django.contrib.auth import get_user_model
 from django.urls import reverse
 from rest_framework.test import APITestCase, APIClient
+from unittest.mock import patch
+from django.test import TestCase
+from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
+from django.utils.encoding import force_bytes
+from django.contrib.auth.tokens import default_token_generator
 from rest_framework import status
 from rest_framework.authtoken.models import Token
 from .models import Patient, Doctor
@@ -16,7 +21,7 @@ class AccountsAPITestCase(APITestCase):
         self.register_url = reverse('accounts:api-register')
         self.login_url = reverse('accounts:api-get-auth')
         self.logout_url = reverse('accounts:api-logout')
-        self.password_reset_url = reverse('accounts:api-password-reset')
+        self.change_password_url = reverse('accounts:api-change-password')
         self.faker = Faker()
 
         self.staff_user = User.objects.create_user(
@@ -134,10 +139,10 @@ class AccountsAPITestCase(APITestCase):
         response = self.client.post(self.logout_url)
         self.assertEqual(response.status_code, status.HTTP_401_UNAUTHORIZED)
     
-    def test_password_reset(self):
+    def test_change_password(self):
         self.client.credentials(HTTP_AUTHORIZATION=f'Token {self.staff_token}')
         data = {'old_password': 'staffpass', 'new_password': 'newstrongpass'}
-        response = self.client.post(self.password_reset_url, data, format='json')
+        response = self.client.post(self.change_password_url, data, format='json')
         self.assertEqual(response.status_code, status.HTTP_200_OK)
         self.staff_user.refresh_from_db()
         self.assertTrue(self.staff_user.check_password('newstrongpass'))
@@ -204,3 +209,74 @@ class AccountsAPITestCase(APITestCase):
         self.assertEqual(str(user.phone.national_number), data['phone'])
         self.assertEqual(user.address, data['address'])
 
+
+class PasswordResetTests(TestCase):
+    def setUp(self):
+        self.client = APIClient()
+        self.user = User.objects.create_user(email="testuser@example.com", password="OldPassword123", username="testuser")
+        self.password_reset_url = reverse("accounts:api-password-reset-request")
+
+    @patch("django.core.mail.EmailMultiAlternatives.send")
+    def test_password_reset_request_valid_email(self, mock_send):
+        """Test password reset request with a valid email. Ensure email is not actually sent."""
+        response = self.client.post(self.password_reset_url, {"email": self.user.email})
+        self.assertEqual(response.status_code, status.HTTP_200_OK)
+        self.assertIn("Password reset link sent", response.data["detail"])
+
+        # Ensure email sending function was called, but email is NOT sent
+        mock_send.assert_called_once()
+
+    @patch("django.core.mail.EmailMultiAlternatives.send")
+    def test_password_reset_request_invalid_email(self, mock_send):
+        """Test password reset request with an invalid email."""
+        response = self.client.post(self.password_reset_url, {"email": "doesnotexist@example.com"})
+        self.assertEqual(response.status_code, status.HTTP_400_BAD_REQUEST)
+        self.assertIn("error", response.data)
+
+        # Ensure email was NOT sent
+        mock_send.assert_not_called()
+
+    def test_password_reset_confirm_invalid_user(self):
+        """Test password reset with an invalid user ID."""
+        uidb64 = urlsafe_base64_encode(force_bytes(9999))  # Non-existent user
+        token = default_token_generator.make_token(self.user)
+
+        response = self.client.post(reverse("accounts:api-password-reset-confirm", kwargs={"uidb64": uidb64, "token": token}), {})
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("Invalid reset link", response.json()["error"])
+
+    def test_password_reset_confirm_invalid_token(self):
+        """Test password reset with an invalid token."""
+        uidb64 = urlsafe_base64_encode(force_bytes(self.user.pk))
+        invalid_token = "invalid-token"
+
+        response = self.client.post(reverse("accounts:api-password-reset-confirm", kwargs={"uidb64": uidb64, "token": invalid_token}), {})
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("Reset link has expired or is invalid", response.json()["error"])
+
+    def test_password_reset_confirm_success(self):
+        """Test successful password reset."""
+        uidb64 = urlsafe_base64_encode(force_bytes(self.user.pk))
+        token = default_token_generator.make_token(self.user)
+        reset_url = reverse("accounts:api-password-reset-confirm", kwargs={"uidb64": uidb64, "token": token})
+
+        response = self.client.post(reset_url, {"new_password1": "NewPassword123!", "new_password2": "NewPassword123!"}, format="json")
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("Password reset successfully", response.json()["detail"])
+
+        # Ensure password is actually updated
+        self.user.refresh_from_db()
+        self.assertTrue(self.user.check_password("NewPassword123!"))
+
+    def test_password_reset_confirm_mismatched_passwords(self):
+        """Test password reset with mismatched passwords."""
+        uidb64 = urlsafe_base64_encode(force_bytes(self.user.pk))
+        token = default_token_generator.make_token(self.user)
+
+        response = self.client.post(reverse("accounts:api-password-reset-confirm", kwargs={"uidb64": uidb64, "token": token}), {
+            "new_password1": "NewPassword123!",
+            "new_password2": "WrongPassword123!"
+        }, format="json")
+
+        self.assertEqual(response.status_code, 400)
+        self.assertIn("Passwords do not match", response.json()["error"])

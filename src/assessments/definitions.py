@@ -197,6 +197,14 @@ class BaseAssessmentPhase(ABC):
             }
             for q in self.questions.values()
         }
+    
+    def get_qids(self) -> List[int | str]:
+        """Get the question IDs for the assessment."""
+        qids = []
+        for qNode in self.questions.values():
+            if not qNode.qid in qids:
+                qids.append(qNode.qid)
+        return qids
 
     def __str__(self):
         return self.name
@@ -359,7 +367,7 @@ class GAD7Phase(BaseAssessmentPhase):
                 node_id="1",
                 qid=1,
                 text="Feeling nervous, anxious or on edge?",
-                y=2, n=END, o=END, r=2
+                y=2, n=2, o=2, r=2
             ),
             "2": QuestionNode(
                 node_id="2",
@@ -436,7 +444,7 @@ class MonitoringPhase(BaseAssessmentPhase):
     
     @property
     def supports_scoring(self) -> bool:
-        return True
+        return False
 
     @property
     def low(self) -> int:

@@ -1,7 +1,9 @@
-from django.db.models.signals import post_save, pre_save
+from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.contrib.auth import get_user_model
 from .models import Doctor, Patient
+from django.contrib.auth.models import Permission
+from django.contrib.contenttypes.models import ContentType
 
 
 User = get_user_model()
@@ -11,27 +13,20 @@ def create_user_profile(sender, instance, created, **kwargs):
     if created:
         if instance.role == 'doctor':
             Doctor.objects.create(user=instance)
+            assign_permissions(permissions=['can_access_dashboard', 'can_view_chat_session'],
+            user=instance)
         elif instance.role == 'patient':
             Patient.objects.create(user=instance)
+            assign_permissions(permissions=['can_perform_chat'], user=instance)
         elif instance.role == 'staff':
             instance.is_staff = True
-            # add staff permissions here
         instance.save()
 
-@receiver(pre_save, sender=User)
-def update_user_profile(sender, instance, **kwargs):
-    if instance.pk:
-        try:
-            old_instance = User.objects.get(pk=instance.pk)
-        except User.DoesNotExist:
-            return
-        if instance.role != old_instance.role: # role is updated
-            if instance.role == 'doctor':
-                Doctor.objects.create(user=instance)
-                Patient.objects.filter(user=instance).delete()
-            elif instance.role == 'patient':
-                Patient.objects.create(user=instance)
-                Doctor.objects.filter(user=instance).delete()
-            else:
-                Doctor.objects.filter(user=instance).delete()
-                Patient.objects.filter(user=instance).delete()
+def assign_permissions(permissions, user):
+    """Grant permissions to user."""
+    for permission in permissions:
+        permission = Permission.objects.get(
+            codename=permission,
+            content_type=ContentType.objects.get_for_model(User)
+        )
+        user.user_permissions.add(permission)

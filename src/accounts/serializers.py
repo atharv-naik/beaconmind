@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
+from .models import Doctor, Patient
 from rest_framework.authtoken.models import Token
 from django.contrib.auth.password_validation import validate_password
 from phonenumber_field.serializerfields import PhoneNumberField
@@ -11,7 +12,7 @@ class UserSerializer(serializers.ModelSerializer):
     phone = PhoneNumberField(region='IN', required=False, allow_blank=True)
     class Meta:
         model = User
-        fields = ('id', 'username', 'email', 'phone', 'address', 'role', 'password')
+        fields = ('id', 'first_name', 'last_name', 'username', 'email', 'phone', 'address', 'role', 'password')
         extra_kwargs = {
             'password': {'write_only': True, 'required': True},
             'username': {'required': True},

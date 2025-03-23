@@ -1,0 +1,37 @@
+{% extends "dashboard/base.html" %}
+
+{% block header %}
+<div style="display: flex; gap: 5px; align-items: center">
+    <span>
+      <div
+        onclick="window.history.back()"
+        style="display: grid; place-items: center; cursor: pointer"
+      >
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          height="20px"
+          viewBox="0 -960 960 960"
+          width="20px"
+          fill="var(--icon-fill)"
+        >
+          <path
+            d="m313-440 224 224-57 56-320-320 320-320 57 56-224 224h487v80H313Z"
+          />
+        </svg>
+      </div>
+    </span>
+Session Details / 
+  <span style="font-size: 12px">
+    <a href="{% url 'dashboard:sessions' %}" style="color: var(--text-color)">
+      Sessions
+    </a>
+     / Dashboard
+  </span>
+</div>
+{% endblock %}
+
+{% block scripts %}
+<script>
+  document.querySelector('.nav-item.sessions').classList.add('selected');
+</script>
+{% endblock %}

@@ -155,8 +155,7 @@ class SessionPipeline:
         if next_node == definitions.END:
 
             # SCORING HAPPENS HERE ///////////////////////////////////////
-            if self.curr_phase.supports_scoring:
-                self.run_score_routine(self.curr_phase)
+            self.run_score_routine(self.curr_phase)
 
             # check for next phase
             next_phase = PhaseMap.next(self.session.phase)

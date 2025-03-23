@@ -32,9 +32,13 @@
   <thead>
     <tr>
       <th>Question</th>
-      {% for label in phase.labels %}
-      <th>{{ label }}</th>
-      {% endfor %}
+      {% if phase.supports_scoring %}
+        {% for label in phase.labels %}
+        <th>{{ label }}</th>
+        {% endfor %}
+      {% else %}
+        <th>Remarks</th>
+      {% endif %}
     </tr>
   </thead>
   <tbody>
@@ -43,21 +47,25 @@
       <td class="question">
         Q{{ record.question_id }}. {{ record.question_text }}
       </td>
-      {% for score in phase.range %} {% if score == record.score %}
-      <td>
-        <svg
-          xmlns="http://www.w3.org/2000/svg"
-          height="24px"
-          viewBox="0 -960 960 960"
-          width="24px"
-          fill="var(--icon-fill)"
-        >
-          <path d="M382-240 154-468l57-57 171 171 367-367 57 57-424 424Z" />
-        </svg>
-      </td>
+      {% if phase.supports_scoring %}
+        {% for score in phase.range %} {% if score == record.score %}
+        <td>
+          <svg
+            xmlns="http://www.w3.org/2000/svg"
+            height="24px"
+            viewBox="0 -960 960 960"
+            width="24px"
+            fill="var(--icon-fill)"
+          >
+            <path d="M382-240 154-468l57-57 171 171 367-367 57 57-424 424Z" />
+          </svg>
+        </td>
+        {% else %}
+        <td></td>
+        {% endif %} {% endfor %}
       {% else %}
-      <td></td>
-      {% endif %} {% endfor %}
+        <td>{{ record.remark }}</td>
+      {% endif %}
     </tr>
     {% endfor %}
   </tbody>

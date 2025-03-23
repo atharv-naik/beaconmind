@@ -4,6 +4,7 @@
 from django.contrib.auth import get_user_model, authenticate, login, logout
 from django.contrib.auth.tokens import default_token_generator
 from django.shortcuts import render, redirect
+from django.contrib.auth.decorators import login_required
 from django.http import HttpResponseNotAllowed
 from django.utils.http import urlsafe_base64_decode
 from django.views import View
@@ -95,3 +96,14 @@ class PasswordResetConfirmView(View):
             return render(request, 'minimal-info.html', {"info": "The password reset link is invalid or has expired. Please request a new one."})
 
         return render(request, self.template_name, {"uidb64": uidb64, "token": token})
+
+
+@login_required
+def profile(request):
+    user = request.user
+    context = {
+        "user": user,
+        "doctor": getattr(user, "doctor", None),
+        "patient": getattr(user, "patient", None),
+    }
+    return render(request, "accounts/profile.html", context)

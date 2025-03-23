@@ -1,0 +1,790 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Profile - {{ user.first_name }}</title>
+    <link
+      rel="stylesheet"
+      href="https://fonts.googleapis.com/icon?family=Material+Icons"
+    />
+    <style>
+
+          @import url('https://fonts.googleapis.com/css2?family=Roboto:ital,wght@0,100..900;1,100..900&display=swap');
+
+
+        :root {
+          --text-color: #e0e0e0;
+
+          {% comment %} orangish {% endcomment %}
+          {% comment %} --accent-color: #ff9800;
+          --accent-color-faint: #ff9900a9; {% endcomment %}
+
+          {% comment %} bluish {% endcomment %}
+          {% comment %} --accent-color: #85b8b7;
+          --accent-color-faint: #85b8b7b7; {% endcomment %}
+
+          {% comment %} greenish {% endcomment %}
+          {% comment %} --accent-color: #61b5b4;
+          --accent-color-faint: #61b5b4b7; {% endcomment %}
+
+          {% comment %} pinkish {% endcomment %}
+          --accent-color: #d4adfc;
+          --accent-color-faint: #d5adfcb7;
+
+        }
+
+        body {
+          background-color: #121212;
+          color: #e0e0e0;
+          font-family: 'Roboto', monospace;
+          display: flex;
+          justify-content: center;
+          align-items: center;
+          height: 100vh;
+          margin: 0;
+        }
+        .profile-container {
+          background: #1e1e1e;
+          padding: 20px;
+          border-radius: 10px;
+          width: 400px;
+          max-height: 80vh;
+          overflow-y: scroll;
+          scrollbar-width: none;
+          box-shadow: 0px 4px 10px rgba(0, 0, 0, 0.3);
+        }
+        .profile-header {
+          display: flex;
+          align-items: center;
+          gap: 15px;
+          margin-bottom: 20px;
+        }
+        .profile-header i {
+          font-size: 40px;
+          color: var(--accent-color);
+        }
+
+        .profile-info {
+          overflow-y: scroll;
+          overflow-x: hidden;
+          max-height: 70vh;
+          padding: 5px;
+          scrollbar-width: none;
+        }
+
+        ::-webkit-scrollbar {
+          width: 5px;
+        }
+        ::-webkit-scrollbar-thumb {
+          background: #333;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+          background: #555;
+        }
+        ::-webkit-scrollbar-track {
+          background: #111;
+        }
+
+        .profile-info div:not(:last-child) {
+          margin-bottom: 10px;
+          display: flex;
+          flex-direction: column;
+        }
+        .profile-info div input,
+        .profile-info div textarea,
+        .drawer-content input {
+          padding: 5px;
+          border: none;
+          background: #333;
+          color: #ffffff;
+          border-radius: 5px;
+          outline: none;
+        }
+          .profile-info div input[type="checkbox"] {
+              width: 20px;
+              height: 20px;
+          }
+          .profile-info div input.disabled {
+              background: #444;
+              color: #999;
+          }
+        .profile-info div textarea {
+          resize: none;
+          height: 50px;
+        }
+
+          .form-label {
+              font-size: 14px;
+              color: #999;
+          }
+
+          .name-edit {
+              display: none;
+              gap: 10px;
+              margin-top: 10px;
+          }
+
+          .name-edit input {
+              padding: 5px;
+              border: none;
+              outline: none;
+              background: transparent;
+              border-bottom: 2px solid #666;
+              color: #ffffff;
+          }
+
+          .name-edit button {
+              padding: 5px 10px;
+              background: var(--accent-color);
+              border: none;
+              border-radius: 5px;
+              cursor: pointer;
+          }
+
+          .name-edit.show {
+              display: flex;
+          }
+
+          .profile-header-name.editing {
+              display: none;
+          }
+
+          .profile-header-name:not(.editing) {
+              display: flex;
+              align-items: center;
+              gap: 10px;
+              font-size: 24px;
+          }
+
+          .drawer-btn {
+              cursor: pointer;
+              color: var(--accent-color);
+              font-size: 14px;
+              display: flex;
+              align-items: center;
+              gap: 5px;
+          }
+
+          .drawer-content {
+              display: flex;
+              gap: 10px;
+              margin-top: 10px;
+          }
+
+
+
+        .cl-toggle-switch {
+          position: relative;
+         }
+
+         .cl-switch {
+          position: relative;
+          display: inline-block;
+         }
+         /* Input */
+         .cl-switch > input {
+          appearance: none;
+          -moz-appearance: none;
+          -webkit-appearance: none;
+          z-index: -1;
+          position: absolute;
+          right: 6px;
+          top: -8px;
+          display: block;
+          margin: 0;
+          border-radius: 50%;
+          width: 40px;
+          height: 40px;
+          background-color: rgb(0, 0, 0, 0.38);
+          outline: none;
+          opacity: 0;
+          transform: scale(1);
+          pointer-events: none;
+          transition: opacity 0.3s 0.1s, transform 0.2s 0.1s;
+         }
+         /* Track */
+         .cl-switch > span::before {
+          content: "";
+          float: right;
+          display: inline-block;
+          margin: 5px 0 5px 10px;
+          border-radius: 7px;
+          width: 36px;
+          height: 14px;
+          background-color: rgb(0, 0, 0, 0.38);
+          vertical-align: top;
+          transition: background-color 0.2s, opacity 0.2s;
+          cursor: pointer;
+         }
+         /* Thumb */
+         .cl-switch > span::after {
+          content: "";
+          position: absolute;
+          top: 2px;
+          right: 16px;
+          border-radius: 50%;
+          width: 20px;
+          height: 20px;
+          background-color: #fff;
+          box-shadow: 0 3px 1px -2px rgba(0, 0, 0, 0.2), 0 2px 2px 0 rgba(0, 0, 0, 0.14), 0 1px 5px 0 rgba(0, 0, 0, 0.12);
+          transition: background-color 0.2s, transform 0.2s;
+          cursor: pointer;
+         }
+          .cl-switch > input:disabled + span::before {
+          cursor: not-allowed;
+          }
+          .cl-switch > input:disabled + span::after {
+          cursor: not-allowed;
+          }
+
+         /* Checked */
+         .cl-switch > input:checked {
+          right: -10px;
+          background-color: #85b8b7;
+          background-color: var(--accent-color-faint, #85b8b7);
+         }
+
+         .cl-switch > input:checked + span::before {
+          background-color: #85b8b7;
+          background-color: var(--accent-color-faint, #85b8b7);
+         }
+
+         .cl-switch > input:checked + span::after {
+          background-color: #018786;
+          background-color: var(--accent-color, #018786);
+          transform: translateX(16px);
+         }
+         /* Hover, Focus */
+         .cl-switch:hover > input {
+          opacity: 0.04;
+         }
+
+         .cl-switch > input:focus {
+          opacity: 0.12;
+         }
+
+         .cl-switch:hover > input:focus {
+          opacity: 0.16;
+         }
+         /* Active */
+         .cl-switch > input:active {
+          opacity: 1;
+          transform: scale(0);
+          transition: transform 0s, opacity 0s;
+         }
+
+         .cl-switch > input:active + span::before {
+          background-color: #8f8f8f;
+         }
+
+         .cl-switch > input:checked:active + span::before {
+          background-color: #85b8b7;
+          background-color: var(--accent-color-faint, #85b8b7);
+         }
+         /* Disabled */
+         .cl-switch > input:disabled {
+          opacity: 0;
+         }
+
+         .cl-switch > input:disabled + span::before {
+          background-color: #ddd;
+         }
+
+         .cl-switch > input:checked:disabled + span::before {
+          background-color: #bfdbda;
+         }
+
+         .cl-switch > input:checked:disabled + span::after {
+          background-color: #61b5b4;
+          background-color: var(--accent-color, #61b5b4);
+         }
+
+         .messages {
+          transform: translate(50%, -200%);
+          transition: transform 0.3s;
+         }
+         .messages.slide-down {
+          transform: translate(50%, 0);
+         }
+
+         .icon.right {
+           position: absolute;
+          left: unset;
+          right: 10px;
+          top: 50%;
+          transform: translateY(-50%);
+          cursor: pointer;
+          font-size: 16px;
+      }
+
+      .drawer-content .form-group {
+        position: relative;
+        display: flex;
+        flex-direction: column;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="back-btn">
+      <button
+        style="
+          color: var(--accent-color);
+          text-decoration: none;
+          position: absolute;
+          top: 10px;
+          left: 10px;
+          display: flex;
+          align-items: center;
+          gap: 5px;
+          border: none;
+          cursor: pointer;
+          padding: 5px;
+          border-radius: 50%;
+          background: #333;
+        "
+        onclick="window.history.back()"
+      >
+        <i class="material-icons">arrow_back</i>
+      </button>
+    </div>
+
+    <div
+      class="messages"
+      style="position: fixed; top: 10px; right: 50%; z-index: 100"
+    >
+    </div>
+    <div class="profile-container">
+      <div class="profile-header">
+        <i class="material-icons">account_circle</i>
+        <div class="profile-header-name">
+          <span> {{ user.first_name }} </span>
+          <div
+            onclick="editName()"
+            style="
+              background: var(--accent-color);
+              padding: 2px;
+              border-radius: 50%;
+              cursor: pointer;
+              display: flex;
+              align-items: center;
+              justify-content: center;
+            "
+          >
+            <i
+              class="material-icons"
+              style="font-size: 14px; color: black; cursor: pointer"
+              >edit</i
+            >
+          </div>
+        </div>
+
+        <div class="name-edit">
+          <input
+            type="text"
+            value="{{ user.first_name }}"
+            id="first_name"
+            name="first_name"
+            required
+          />
+
+          <div style="display: flex; gap: 10px">
+            <button
+              style="
+                padding: 8px 12px;
+                border: none;
+                border-radius: 4px;
+                cursor: pointer;
+                background: #333;
+                color: #fff;
+              "
+              id="cancel-name"
+            >
+              Cancel
+            </button>
+            <button
+              style="
+                padding: 8px 12px;
+                background: var(--accent-color);
+                border: none;
+                border-radius: 4px;
+                cursor: pointer;
+              "
+              id="save-name"
+            >
+              Save
+            </button>
+          </div>
+        </div>
+      </div>
+      <div class="profile-info">
+        <div>
+          <div class="form-label">Username</div>
+          <input
+            type="text"
+            value="{{ user.username }}"
+            id="username"
+            name="username"
+            class="form-field disabled"
+            disabled
+          />
+        </div>
+        <div>
+          <div class="form-label">Email</div>
+          <input
+            type="text"
+            class="form-field"
+            value="{{ user.email }}"
+            id="email"
+            name="email"
+            required
+          />
+        </div>
+        <div>
+          <div class="form-label">Phone</div>
+          <input
+            type="text"
+            class="form-field"
+            value="{{ user.phone }}"
+            id="phone"
+            name="phone"
+            required
+          />
+        </div>
+        <div>
+          <div class="form-label">Address</div>
+          <textarea id="address" class="form-field" name="address">
+{{ user.address }}</textarea
+          >
+        </div>
+        <div>
+          <div class="form-label">Role</div>
+          <input
+            type="text"
+            value="{{ user.get_role_display }}"
+            id="role"
+            name="role"
+            class="form-field disabled"
+            disabled
+          />
+        </div>
+        {% if user.role == "doctor" %}
+        <div
+          style="
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-direction: row;
+          "
+        >
+          <div class="form-label">
+            <span
+              >Patient Alerts
+              <span
+                id="experimental"
+                style="color: var(--accent-color); font-size: 12px"
+                >[Experimental]</span
+              >
+            </span>
+            <p style="opacity: 0.8; font-size: 12px">
+              Receive email alerts when a patient is suspected to have a serious
+              condition(s).
+            </p>
+          </div>
+          <div class="cl-toggle-switch">
+            <label class="cl-switch">
+              <input
+                type="checkbox"
+                {% if not user.doctor %}disabled{% endif %} 
+                {% if user.doctor.receive_patient_alerts %}checked{% endif %}
+                data-url="{% url 'dashboard:toggle-alerts' user.id %}"
+              />
+              <span></span>
+            </label>
+          </div>
+        </div>
+        {% endif %}
+      </div>
+      <div
+        style="
+          display: flex;
+          justify-content: space-between;
+          align-items: center;
+        "
+      >
+        <div
+          style="
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+          "
+        >
+          <div
+            class="drawer-btn"
+            style="
+              cursor: pointer;
+              color: var(--accent-color);
+              font-size: 14px;
+              display: flex;
+              align-items: center;
+              gap: 5px;
+            "
+          >
+            <i class="material-icons" style="font-size: 16px">vpn_key</i>
+            <span>Change Password</span>
+          </div>
+        </div>
+        <button
+          style="
+            padding: 8px 12px;
+            background: var(--accent-color);
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+          "
+          id="submit-btn"
+        >
+          Save
+        </button>
+      </div>
+
+      <div
+        class="drawer"
+        style="display: flex; flex-direction: column; gap: 10px"
+      >
+        <div class="drawer-content" style="flex-direction: column; gap: 10px">
+          <div class="form-label">Old Password</div>
+          <div class="form-group">
+            <input
+              type="password"
+              class="form-field"
+              id="old_password"
+              name="old_password"
+              required
+            />
+            <span
+              class="material-icons icon right cursor-pointer toggle-password"
+              onclick="togglePasswordVisibility(this)"
+              >visibility_off</span
+            >
+          </div>
+
+          <div class="form-label">New Password</div>
+          <div class="form-group">
+            <input
+              type="password"
+              class="form-field"
+              id="new_password"
+              name="new_password"
+              required
+            />
+            <span
+              class="material-icons icon right cursor-pointer toggle-password"
+              onclick="togglePasswordVisibility(this)"
+              >visibility_off</span
+            >
+          </div>
+
+          <div class="form-label">Confirm Password</div>
+          <div class="form-group">
+            <input
+              type="password"
+              class="form-field"
+              id="confirm_password"
+              name="confirm_password"
+              required
+            />
+            <span
+              class="material-icons icon right cursor-pointer toggle-password"
+              onclick="togglePasswordVisibility(this)"
+              >visibility_off</span
+            >
+          </div>
+        </div>
+        <div style="display: flex; justify-content: flex-end">
+          <button
+            onclick="handlePasswordChange()"
+            style="
+              padding: 8px 12px;
+              background: var(--accent-color);
+              border: none;
+              border-radius: 4px;
+              cursor: pointer;
+            "
+            id="change-password"
+          >
+            Change Password
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <script>
+
+        function getCookie(name) {
+          let cookieValue = null;
+          if (document.cookie && document.cookie !== '') {
+              document.cookie.split(';').forEach(cookie => {
+                  cookie = cookie.trim();
+                  if (cookie.startsWith(name + '=')) {
+                      cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                  }
+              });
+          }
+          return cookieValue;
+      }
+
+      function validateFormFields() {
+          document.querySelectorAll('.profile-info .form-field').forEach(field => {
+              field.addEventListener('input', function () {
+                  field.style.border = (field.value.trim() === '' && field.required) ? '1px solid red' : 'none';
+              });
+          });
+      }
+
+      function handleDoctorToggle() {
+          document.querySelectorAll('.cl-switch input').forEach(input => {
+              input.addEventListener('change', async function () {
+                  const response = await fetch(this.dataset.url, {
+                      method: 'POST',
+                      headers: {
+                          'X-CSRFToken': getCookie('csrftoken'),
+                          'Content-Type': 'application/json',
+                          mode: 'same-origin'
+                      },
+                      body: JSON.stringify({ receive_patient_alerts: this.checked })
+                  });
+                  if (!response.ok) this.checked = !this.checked;
+              });
+          });
+      }
+
+      function toggleNameEdit() {
+          document.querySelector('.name-edit').classList.toggle('show');
+          document.querySelector('.profile-header-name').classList.toggle('editing');
+      }
+
+      function cancelNameEdit() {
+          document.querySelector('#cancel-name').addEventListener('click', toggleNameEdit);
+      }
+
+      function editName() {
+          toggleNameEdit();
+          document.querySelector('#first_name').focus();
+      }
+
+      async function saveNameEdit() {
+          const first_name = document.querySelector('#first_name').value;
+          const response = await fetch("{% url 'accounts:api-profile' %}", {
+              method: 'PUT',
+              headers: {
+                  'X-CSRFToken': getCookie('csrftoken'),
+                  'Content-Type': 'application/json',
+                  mode: 'same-origin'
+              },
+              body: JSON.stringify({ first_name })
+          });
+
+          if (response.ok) {
+              document.querySelector('.profile-header-name span').textContent = first_name;
+              toggleNameEdit();
+              showMessage('Name updated', 'success');
+          } else {
+              showMessage('Name update failed', 'error');
+          }
+      }
+
+      document.querySelector('#save-name').addEventListener('click', saveNameEdit);
+
+      document.querySelector('#submit-btn').addEventListener('click', async function () {
+          const data = {};
+          document.querySelectorAll('.form-field').forEach(field => {
+              if (!field.disabled) data[field.id] = field.value;
+          });
+
+          const response = await fetch("{% url 'accounts:api-profile' %}", {
+              method: 'PUT',
+              headers: {
+                  'X-CSRFToken': getCookie('csrftoken'),
+                  'Content-Type': 'application/json'
+              },
+              body: JSON.stringify(data)
+          });
+
+          if (response.ok) {
+              showMessage('Profile updated', 'success');
+          } else {
+              const errorData = await response.json();
+              let errorText = Object.values(errorData).flat().join('<br>');
+              showMessage(errorText, 'error');
+
+              // highlight fields with errors
+              Object.keys(errorData).forEach(field => {
+                  const input = document.querySelector(`#${field}`);
+                  input.style.border = '1px solid red';
+              });
+          }
+      });
+
+      async function handlePasswordChange() {
+          const old_password = document.querySelector('#old_password').value;
+          const new_password = document.querySelector('#new_password').value;
+          const confirm_password = document.querySelector('#confirm_password').value;
+
+          if (new_password !== confirm_password) {
+              showMessage('Passwords do not match', 'error');
+              return;
+          }
+
+          const response = await fetch("{% url 'accounts:api-change-password' %}", {
+              method: 'POST',
+              headers: {
+                  'X-CSRFToken': getCookie('csrftoken'),
+                  'Content-Type': 'application/json'
+              },
+              body: JSON.stringify({ old_password, new_password })
+          });
+
+          if (response.ok) {
+              document.querySelectorAll('#old_password, #new_password, #confirm_password').forEach(input => input.value = '');
+              showMessage('Password changed. Please login again.', 'success');
+              setTimeout(() => window.location.reload(), 3000);
+          } else {
+              const errorData = await response.json();
+              let errorText = Object.values(errorData).flat().join('<br>');
+              showMessage(errorText, 'error');
+          }
+      }
+
+      function togglePasswordVisibility(element) {
+          const input = element.previousElementSibling;
+          input.type = input.type === 'password' ? 'text' : 'password';
+          element.textContent = input.type === 'password' ? 'visibility_off' : 'visibility';
+      }
+
+      function showMessage(message, type) {
+          const messages = document.querySelector('.messages');
+          const color = type === 'success' ? 'var(--accent-color)' : '#f44336';
+          messages.innerHTML = `
+              <div style="background: #000; color: ${color}; border: 1px solid ${color}; font-size: 14px;
+              padding: 10px; border-radius: 5px;">
+                  ${message}
+              </div>
+          `;
+          showMsgPopupAnimation();
+      }
+
+      function showMsgPopupAnimation() {
+          const messages = document.querySelector('.messages');
+          messages.classList.add('slide-down');
+          setTimeout(() => messages.classList.remove('slide-down'), 3000);
+      }
+
+      // Initialize functions
+      validateFormFields();
+      cancelNameEdit();
+      {% if user.role == "doctor" %} handleDoctorToggle(); {% endif %}
+    </script>
+  </body>
+</html>

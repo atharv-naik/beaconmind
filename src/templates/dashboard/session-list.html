@@ -1,0 +1,127 @@
+{% extends 'dashboard/base.html' %}
+
+{% block header %}
+Sessions / <span style="font-size: 12px; color: var(--text-color);">Dashboard</span>
+{% endblock %}
+
+{% block styles %}
+<style>
+
+    :root {
+        --phq9: #d4adfc;
+        --gad7: #f8d7da;
+        --asq: #61b5b4;
+        --monitoring: #f4a261;
+        --other: #e0a800;
+    }
+
+    .item {
+        cursor: pointer;
+        background: linear-gradient(135deg, var(--item-bg), var(--content-bg));
+        padding: 15px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="filter-sort" style="background-color: var(--content-bg); padding: 20px; border-radius: var(--item-border-radius); border-bottom: 1px solid var(--item-shadow)">
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <label for="filter-status" class="form-label" style="font-weight: bold; color: var(--text-color);">Filter by Status</label>
+            <select id="filter-status" class="form-control" style="padding: 10px; background-color: var(--item-bg); color: var(--text-color); border: 1px solid var(--sidebar-border);">
+                <option value="">All</option>
+                <option value="open">Open</option>
+                <option value="closed">Closed</option>
+                <option value="aborted">Aborted</option>
+            </select>
+        </div>
+        <div class="col-md-6">
+            <label for="sort-order" class="form-label" style="font-weight: bold; color: var(--text-color);">Sort by Date</label>
+            <select id="sort-order" class="form-control" style="padding: 10px; background-color: var(--item-bg); color: var(--text-color); border: 1px solid var(--sidebar-border);">
+                <option value="desc">Newest First</option>
+                <option value="asc">Oldest First</option>
+            </select>
+        </div>
+    </div>
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <label for="search-username" class="form-label" style="font-weight: bold; color: var(--text-color);">Search by Username</label>
+            <input type="text" id="search-username" class="form-control" placeholder="Enter username" style="padding: 10px; background-color: var(--item-bg); color: var(--text-color); border: 1px solid var(--sidebar-border);">
+        </div>
+    </div>
+</div>
+
+<div id="sessions-list" class="sessions" style="margin: 20px 10px;">
+    {% for session in sessions %}
+    <div class="item mb-3" onclick="window.location.href='{% url 'chat:session-page' session.id %}'" data-status="{{ session.status }}" data-timestamp="{{ session.timestamp|date:'U' }}" data-username="{{ session.conversation.user.username|lower }}">
+        <div>
+            <h5 style="margin-bottom: 8px; font-size: 18px; color: var(--text-color);"><i class="material-icons" style="vertical-align: middle; margin-right: 8px; color: var(--text-color);">chat</i>{{ session.conversation.user.username }}'s Chat Session
+
+                <div class="assessment-tags" style="display: inline-block; margin-left: 10px;">
+                    {% for assessment in session.assessments.all %}
+                    <span style="margin-right: 5px; background-color: var(--accent-color); color: var(--accent-invert); border-radius: 12px; font-size: 12px; padding: 5px 10px;
+                    background-color: var(--{{ assessment.get_type_display|lower }}, var(--other)); color: black; opacity: 0.8;">
+                        {{ assessment.get_type_display }}</span>
+                    {% endfor %}
+                </div>
+
+            </h5>
+            <p style="margin: 0; font-size: 14px; color: var(--text-color);"><strong>Status:</strong> {{ session.status|capfirst }}</p>
+            <p style="margin: 0; font-size: 14px; color: var(--text-color);">{{ session.timestamp|timesince }} ago</p>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+
+<script>
+
+    document.querySelector('.nav-item.sessions').classList.add('selected');
+
+    document.addEventListener('DOMContentLoaded', () => {
+        const filterStatus = document.getElementById('filter-status');
+        const sortOrder = document.getElementById('sort-order');
+        const searchUsername = document.getElementById('search-username');
+        const sessionsList = document.getElementById('sessions-list');
+
+        function applyFiltersAndSort() {
+            const statusFilter = filterStatus.value;
+            const sort = sortOrder.value;
+            const search = searchUsername.value.toLowerCase();
+
+            const items = Array.from(sessionsList.children);
+            items.forEach(item => {
+                const status = item.getAttribute('data-status');
+                const username = item.getAttribute('data-username');
+
+                const show = 
+                    (!statusFilter || status === statusFilter) &&
+                    (!search || username.includes(search));
+
+                item.style.display = show ? 'block' : 'none';
+            });
+
+            items.sort((a, b) => {
+                const timestampA = parseInt(a.getAttribute('data-timestamp'));
+                const timestampB = parseInt(b.getAttribute('data-timestamp'));
+
+                return sort === 'asc' ? timestampA - timestampB : timestampB - timestampA;
+            });
+
+            items.forEach(item => sessionsList.appendChild(item));
+        }
+
+        filterStatus.addEventListener('change', applyFiltersAndSort);
+        sortOrder.addEventListener('change', applyFiltersAndSort);
+        searchUsername.addEventListener('input', applyFiltersAndSort);
+
+        applyFiltersAndSort();
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,114 @@
+{% block styles %}
+<style>
+    :root {
+        --accent-color: rgba(52, 58, 64);
+        --sidebar-bg: #343a40;
+        --sidebar-text-color: #e8eaed;
+        --sidebar-border: #4f5962;
+        --content-bg: #fff;
+        --item-bg: #f4f6f9;
+        --text-color: #555;
+        --text-color-bold: #333;
+    }
+    
+    body {
+        font-family: Arial, sans-serif;
+        margin: 20px;
+        color: var(--text-color-bold);
+        background-color: var(--content-bg);
+    }
+    
+    .container {
+        padding: 20px;
+        border: 2px solid var(--sidebar-border);
+        border-radius: 10px;
+        background-color: var(--item-bg);
+    }
+    
+    h1, h2 {
+        color: var(--accent-color);
+        text-align: center;
+        font-weight: bold;
+    }
+    
+    .assessment-info {
+        margin-bottom: 20px;
+    }
+    
+    .assessment-info p {
+        font-size: 14px;
+        line-height: 1.6;
+        color: var(--text-color);
+    }
+    
+    table {
+        border-collapse: collapse;
+        width: 100%;
+        margin-top: 15px;
+    }
+    
+    th, td {
+        border: 1px solid var(--sidebar-border);
+        text-align: left;
+        padding: 10px;
+    }
+    
+    th {
+        background-color: var(--sidebar-bg);
+        color: var(--sidebar-text-color);
+        font-weight: bold;
+    }
+    
+    td {
+        background-color: var(--content-bg);
+    }
+    
+    tr:nth-child(even) td {
+        background-color: var(--item-bg);
+    }
+</style>
+{% endblock %}
+
+<div class="container">
+  <h2>{{ phase.verbose_name }} Assessment</h2>
+  <div class="assessment-info">
+    <p><strong>Assessment Date:</strong> {{ assessment_date }}</p>
+    <p><strong>Session ID:</strong> {{ session_id }}</p>
+    {% if phase.supports_scoring %}
+      <p><strong>Score:</strong> {{ score }} / {{ phase.cap }}</p>
+    {% endif %}
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>Question</th>
+        {% if phase.supports_scoring %}
+          {% for label in phase.labels %}
+          <th>{{ label }}</th>
+          {% endfor %}
+        {% else %}
+          <th>Remarks</th>
+        {% endif %}
+      </tr>
+    </thead>
+    <tbody>
+      {% for record in records %}
+      <tr>
+        <td class="question">Q{{ record.question_id }}. {{ record.question_text|truncatechars:70}}</td>
+        {% if phase.supports_scoring %}
+          {% for score in phase.range %}
+          <td>
+            {% if score == record.score %}
+            <span class="checkmark">&#10003;</span>
+            {% endif %}
+          </td>
+          {% endfor %}
+        {% else %}
+          <td>{{ record.remark }}</td>
+        {% endif %}
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>

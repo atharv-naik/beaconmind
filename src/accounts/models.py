@@ -18,10 +18,18 @@ class User(AbstractUser):
     )
     role = models.CharField(max_length=10, choices=ROLE_CHOICES, default='staff')
 
+    class Meta:
+        permissions = [
+            ("can_access_dashboard", "Can access dashboard"),
+            ("can_perform_chat", "Can perform chat"),
+            ("can_view_chat_session", "Can view chat session"),
+        ]
+
 class Doctor(models.Model):
     id = ShortUUIDField(primary_key=True, prefix='doc_')
     user = models.OneToOneField(User, on_delete=models.CASCADE)
     department = models.CharField(max_length=100, blank=True, null=True)
+    receive_patient_alerts = models.BooleanField(default=False)
 
     def __str__(self):
         return self.user.username
@@ -29,7 +37,6 @@ class Doctor(models.Model):
 class Patient(models.Model):
     id = ShortUUIDField(primary_key=True, prefix='pat_')
     user = models.OneToOneField(User, on_delete=models.CASCADE)
-    phase = models.CharField(max_length=30, default=PhaseMap.first())
 
     def __str__(self):
         return self.user.username

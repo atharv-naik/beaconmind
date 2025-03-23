@@ -20,3 +20,4 @@ phonenumberslite==8.13.55
 whitenoise==6.9.0
 django-recaptcha==4.0.0
 Faker==37.0.0
+weasyprint==64.1

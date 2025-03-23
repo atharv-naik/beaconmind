@@ -1,122 +1,110 @@
 {% extends 'dashboard/base.html' %}
+{% load custom_filters %}
 
 {% block header %}
-Patient Assessments
+Home <span style="font-size: 12px; color: var(--text-color);">
+    / Dashboard
+</span>
 {% endblock %}
 
 {% block styles %}
 <style>
-    .item {
+    .dashboard-card {
+        padding: 20px;
+        border-radius: var(--item-border-radius);
+        box-shadow: var(--item-shadow);
+        text-align: center;
+        color: var(--text-color);
+    }
+    .dashboard-card h2 {
+        margin: 0;
+        font-size: 24px;
+    }
+    .dashboard-card p {
+        margin: 5px 0 0;
+        font-size: 14px;
+        color: var(--text-secondary);
+    }
+    .dashboard-row:hover {
+        background: var(--item-bg);
+        border-radius: var(--item-border-radius);
         cursor: pointer;
-        background: linear-gradient(135deg, var(--item-bg), var(--content-bg));
-        padding: 15px;
-        border-radius: 8px;
-        display: flex;
-        align-items: center;
-        justify-content: space-between;
     }
 </style>
 {% endblock %}
 
 {% block content %}
-<div class="filter-sort" style="background-color: var(--content-bg); padding: 20px; border-radius: var(--item-border-radius); border-bottom: 1px solid var(--item-shadow)">
-    <div class="row mb-4">
-        <div class="col-md-4">
-            <label for="filter-status" class="form-label" style="font-weight: bold; color: var(--text-color);">Filter by Status</label>
-            <select id="filter-status" class="form-control" style="padding: 10px; background-color: var(--item-bg); color: var(--text-color); border: 1px solid var(--sidebar-border);">
-                <option value="">All</option>
-                <option value="pending">Pending</option>
-                <option value="completed">Completed</option>
-                <option value="aborted">Aborted</option>
-            </select>
-        </div>
-        <div class="col-md-4">
-            <label for="filter-type" class="form-label" style="font-weight: bold; color: var(--text-color);">Filter by Type</label>
-            <select id="filter-type" class="form-control" style="padding: 10px; background-color: var(--item-bg); color: var(--text-color); border: 1px solid var(--sidebar-border);">
-                <option value="">All</option>
-                {% for phase in phase_map.all %}
-                <option value="{{ phase.name }}">{{ phase.verbose_name }}</option>
-                {% endfor %}
-            </select>
-        </div>
-        <div class="col-md-4">
-            <label for="sort-order" class="form-label" style="font-weight: bold; color: var(--text-color);">Sort by Date</label>
-            <select id="sort-order" class="form-control" style="padding: 10px; background-color: var(--item-bg); color: var(--text-color); border: 1px solid var(--sidebar-border);">
-                <option value="desc">Newest First</option>
-                <option value="asc">Oldest First</option>
-            </select>
+
+<div class="overview" style="display: flex; align-items: center; justify-content: center;">
+
+<div style="background-color: var(--content-bg); padding: 20px; border-radius: var(--item-border-radius); border-bottom: 1px solid var(--item-shadow)">
+
+<div class="row dashboard-row" style="max-width: 1200px; margin: 0 auto;">
+    <div class="col-md-3">
+        <div class="dashboard-card">
+            <h2>{{ total_patients }}</h2>
+            <p>Registered Patients</p>
         </div>
     </div>
-    <div class="row mb-4">
-        <div class="col-md-12">
-            <label for="search-username" class="form-label" style="font-weight: bold; color: var(--text-color);">Search by Username</label>
-            <input type="text" id="search-username" class="form-control" placeholder="Enter username" style="padding: 10px; background-color: var(--item-bg); color: var(--text-color); border: 1px solid var(--sidebar-border);">
+    <div class="col-md-3">
+        <div class="dashboard-card">
+            <h2>{{ total_doctors }}</h2>
+            <p>Registered Doctors</p>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="dashboard-card">
+            <h2>{{ completed_sessions_all_time }}</h2>
+            <p>Sessions completed (All Time)</p>
+        </div>
+    </div>
+    <div class="col-md-3">
+        <div class="dashboard-card">
+            <h2>{{ completed_sessions_last_week }}</h2>
+            <p>Sessions completed (Last Week)</p>
         </div>
     </div>
 </div>
 
-<div id="assessments-list" class="assessments" style="margin: 20px 10px;">
-    {% for assessment in assessments %}
-    <div class="item mb-3" onclick="window.location.href='{% url 'dashboard:assessment' assessment.id %}'" data-status="{{ assessment.status }}" data-type="{{ assessment.type }}" data-timestamp="{{ assessment.timestamp|date:'U' }}" data-username="{{ assessment.patient.user.username|lower }}">
-        <div>
-            <h5 style="margin-bottom: 8px; font-size: 18px; color: var(--text-color);"><i class="material-icons" style="vertical-align: middle; margin-right: 8px; color: var(--text-color);">assignment</i>{{ assessment.patient.user.username }}'s {{ assessment.get_type_display }} Assessment</h5>
-            <p style="margin: 0; font-size: 14px; color: var(--text-color);"><strong>Status:</strong> {{ assessment.status|capfirst }}</p>
-            <p style="margin: 0; font-size: 14px; color: var(--text-color);">
-                {% if assessment.status == 'completed' %}
-                Completed {{ assessment.completed_at|timesince }} ago
-                {% else %}
-                Started {{ assessment.timestamp|timesince }} ago
-                {% endif %}
-            </p>
+
+    {% for phase in assessment_types %}
+    <div class="row mt-4 dashboard-row"
+    style="max-width: 1200px; margin: 0 auto;">
+        <div class="col-md-3">
+            <div class="dashboard-card">
+                <h2>{{ assessments_completed_all_time|get_item:phase.name }}</h2>
+                <p>{{ phase.verbose_name }} assessments (All Time)</p>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="dashboard-card">
+                <h2>{{ assessments_completed_last_week|get_item:phase.name }}</h2>
+                <p>{{ phase.verbose_name }} assessments (Last Week)</p>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="dashboard-card">
+                <h2>{{ avg_assessment_score_all_time|get_item:phase.name }}</h2>
+                <p>Avg {{ phase.verbose_name }} Score (All Time)</p>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="dashboard-card">
+                <h2>{{ avg_assessment_score_last_week|get_item:phase.name }}</h2>
+                <p>Avg {{ phase.verbose_name }} Score (Last Week)</p>
+            </div>
         </div>
     </div>
     {% endfor %}
+
+</div>
 </div>
 
+{% endblock %}
+
+{% block scripts %}
 <script>
-    document.addEventListener('DOMContentLoaded', () => {
-        const filterStatus = document.getElementById('filter-status');
-        const filterType = document.getElementById('filter-type');
-        const sortOrder = document.getElementById('sort-order');
-        const searchUsername = document.getElementById('search-username');
-        const assessmentsList = document.getElementById('assessments-list');
-
-        function applyFiltersAndSort() {
-            const statusFilter = filterStatus.value;
-            const typeFilter = filterType.value;
-            const sort = sortOrder.value;
-            const search = searchUsername.value.toLowerCase();
-
-            const items = Array.from(assessmentsList.children);
-            items.forEach(item => {
-                const status = item.getAttribute('data-status');
-                const type = item.getAttribute('data-type');
-                const username = item.getAttribute('data-username');
-
-                const show = 
-                    (!statusFilter || status === statusFilter) &&
-                    (!typeFilter || type === typeFilter) &&
-                    (!search || username.includes(search));
-
-                item.style.display = show ? 'block' : 'none';
-            });
-
-            items.sort((a, b) => {
-                const timestampA = parseInt(a.getAttribute('data-timestamp'));
-                const timestampB = parseInt(b.getAttribute('data-timestamp'));
-
-                return sort === 'asc' ? timestampA - timestampB : timestampB - timestampA;
-            });
-
-            items.forEach(item => assessmentsList.appendChild(item));
-        }
-
-        filterStatus.addEventListener('change', applyFiltersAndSort);
-        filterType.addEventListener('change', applyFiltersAndSort);
-        sortOrder.addEventListener('change', applyFiltersAndSort);
-        searchUsername.addEventListener('input', applyFiltersAndSort);
-
-        applyFiltersAndSort();
-    });
+    // add class selected to nav-item in sidebar
+    document.querySelector('.nav-item.home').classList.add('selected');
 </script>
 {% endblock %}

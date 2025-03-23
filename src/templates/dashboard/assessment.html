@@ -135,9 +135,9 @@
 {% endblock %} {% block header %}
 <div style="display: flex; gap: 5px; align-items: center">
   <span>
-    <a
-      href="{% url 'dashboard:home' %}"
-      style="display: grid; place-items: center"
+    <div
+      onclick="window.history.back()"
+      style="display: grid; place-items: center; cursor: pointer"
     >
       <svg
         xmlns="http://www.w3.org/2000/svg"
@@ -150,19 +150,27 @@
           d="m313-440 224 224-57 56-320-320 320-320 57 56-224 224h487v80H313Z"
         />
       </svg>
-    </a>
+    </div>
   </span>
   <span>Assessment Details &mdash;</span>
   <span
     class="a-type"
     style="
-      background-color: #ccc;
+      background-color: var(--accent-color);
       border-radius: 5px;
-      padding: 2px 4px;
-      color: #000;
+      padding: 0px 10px;
+      font-size: 13px;
+      color: var(--accent-invert);
     "
   >
     <small>{{ assessment.get_type_display }}</small>
+  </span>
+  <span style="font-size: 24px; color: var(--text-color)">/</span>
+  <span style="font-size: 12px">
+    <a href="{% url 'dashboard:assessments' %}" style="color: var(--text-color)">
+      Assessments
+    </a>
+     / Dashboard
   </span>
 </div>
 {% endblock %} {% block header_right %}
@@ -274,12 +282,37 @@
       </div>
 
       <div>
+        {% if phase.supports_scoring %}
         <canvas
           id="scoreChart"
           width="300"
           height="200"
           style="max-width: 100%"
         ></canvas>
+        {% else %}
+        <div
+          style="
+            display: grid;
+            place-items: center;
+            height: 200px;
+            font-size: 20px;
+            color: var(--text-color);
+            opacity: 0.5;
+          "
+        >
+        <div class="empty-state" style="margin-top: 20px; text-align: center;">
+          <div class="icon">
+              <i class="material-icons" style="font-size: 48px; color: var(--icon-fill);">sentiment_very_dissatisfied</i>
+          </div>
+          <h3 style="font-size: 24px; color: var(--text-color);">
+            No Score Data
+          </h3>
+          <p style="font-size: 14px; color: var(--text-color-light); margin-top: 10px;">
+            This assessment does not support scoring.
+          </p>
+      </div>
+        </div>
+        {% endif %}
       </div>
     </div>
   </div>
@@ -370,9 +403,12 @@
           </span>
         </div>
         <div style="display: flex; justify-content: space-between">
+          {% if phase.supports_scoring %}
           <p style="margin: 0; font-size: 14px">
-            <strong>Score</strong> {{ record.score }}
-          </p>
+            <strong>Score</strong> 
+              {{ record.score }}
+            </p>
+          {% endif %}
           <p style="margin: 0; font-size: 12px; opacity: 0.8" title="Keywords">
             <em>{{ record.keywords|join:', ' }}</em>
           </p>
@@ -386,11 +422,14 @@
 {% endblock %} {% block scripts %}
 <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
 <script>
+
+  document.querySelector('.nav-item.assessments').classList.add('selected');
+
   document.addEventListener('DOMContentLoaded', () => {
       const ele = getComputedStyle(document.documentElement);
 
       const drawBarChart = () => {
-          const ctxBar = document.getElementById('scoreChart').getContext('2d');
+          const ctxBar = document.getElementById('scoreChart')?.getContext('2d');
           const data = {
               labels: [{% for record in records %} "Q{{ record.question_id }}", {% endfor %}],
               datasets: [{

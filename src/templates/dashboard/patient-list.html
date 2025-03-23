@@ -1,0 +1,186 @@
+{% extends 'dashboard/base.html' %}
+
+{% block header %}
+Patients / <span style="font-size: 12px; color: var(--text-color);">Dashboard</span>
+{% endblock %}
+
+{% block styles %}
+<style>
+    .item {
+        cursor: pointer;
+        background: linear-gradient(135deg, var(--item-bg), var(--content-bg));
+        padding: 15px;
+        border-radius: 8px;
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+    .export-button {
+        display: flex;
+        gap: 10px;
+        align-items: center;
+        padding: 8px 14px;
+        border-radius: 5px;
+        background-color: var(--accent-color);
+        color: var(--accent-invert);
+        cursor: pointer;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="filter-sort" style="background-color: var(--content-bg); padding: 20px; border-radius: var(--item-border-radius); border-bottom: 1px solid var(--item-shadow)">
+    <div class="row mb-4">
+        <div class="col-md-6">
+            <label for="filter-role" class="form-label" style="font-weight: bold; color: var(--text-color);">Filter by Role</label>
+            <select id="filter-role" class="form-control" style="padding: 10px; background-color: var(--item-bg); color: var(--text-color); border: 1px solid var(--sidebar-border);">
+                <option value="">All</option>
+                <option value="doctor">Doctor</option>
+                <option value="patient">Patient</option>
+                <option value="staff">Staff</option>
+            </select>
+        </div>
+        <div class="col-md-6">
+            <label for="sort-order" class="form-label" style="font-weight: bold; color: var(--text-color);">Sort by Date Added</label>
+            <select id="sort-order" class="form-control" style="padding: 10px; background-color: var(--item-bg); color: var(--text-color); border: 1px solid var(--sidebar-border);">
+                {% if sort == 'desc' %}
+                <option value="desc" selected>Newest First</option>
+                <option value="asc">Oldest First</option>
+                {% else %}
+                <option value="desc">Newest First</option>
+                <option value="asc" selected>Oldest First</option>
+                {% endif %}
+            </select>
+        </div>
+    </div>
+    <div class="row mb-4">
+        <div class="col-md-12">
+            <label for="search-username" class="form-label" style="font-weight: bold; color: var(--text-color);">Search by Username</label>
+            <input type="text" id="search-username" class="form-control" placeholder="Enter username" style="padding: 10px; background-color: var(--item-bg); color: var(--text-color); border: 1px solid var(--sidebar-border);">
+        </div>
+    </div>
+</div>
+
+<div class="export-row" style="background-color: var(--header-bg);
+color: var(--text-color); font-size: 14px; padding: 10px; border-bottom: 1px solid var(--accent-color); display: flex; justify-content: flex-end; align-items: center; gap: 20px;">
+    <div>
+        <span style="font-size: 14px; font-style: italic;">
+            Export 
+            <span id="patient-count" style="font-weight: bold;"> {{ patients|length }}</span> patients data to CSV
+        </span>
+    </div>
+    <div class="export-button" onclick="handleExport()">
+        Export
+        <i class="material-icons" style="font-size: 20px; color: var(--accent-invert)">download</i>
+    </div>
+    
+</div>
+
+<div id="patients-list" class="patients" style="margin: 20px 10px;">
+    {% for patient in patients %}
+    <div class="item mb-3" onclick="window.location.href='{% url 'dashboard:patient' patient.user.username %}'" data-role="{{ patient.user.role }}" data-timestamp="{{ patient.user.date_joined|date:'U' }}" data-username="{{ patient.user.username|lower }}">
+        <div>
+            <h5 style="margin-bottom: 8px; font-size: 18px; color: var(--text-color);"><i class="material-icons" style="vertical-align: middle; margin-right: 8px; color: var(--text-color);">person</i>{{ patient.user.username }}</h5>
+            <p style="margin: 0; font-size: 14px; color: var(--text-color);"><strong>Role:</strong> {{ patient.user.get_role_display }}</p>
+            <p style="margin: 0; font-size: 14px; color: var(--text-color);">Joined {{ patient.user.date_joined|timesince }} ago</p>
+        </div>
+    </div>
+    {% endfor %}
+</div>
+{% endblock %}
+
+{% block scripts %}
+
+<script>
+
+    document.querySelector('.nav-item.patients').classList.add('selected');
+
+
+    const filterRole = document.getElementById('filter-role');
+    const sortOrder = document.getElementById('sort-order');
+    const searchUsername = document.getElementById('search-username');
+    const patientsList = document.getElementById('patients-list');
+
+    function applyFiltersAndSort() {
+        const roleFilter = filterRole.value;
+        const sort = sortOrder.value;
+        const search = searchUsername.value.toLowerCase();
+
+        const items = Array.from(patientsList.children);
+
+        let patientCount = 0;
+        items.forEach(item => {
+            const role = item.getAttribute('data-role');
+            const username = item.getAttribute('data-username');
+
+            const show = 
+                (!roleFilter || role === roleFilter) &&
+                (!search || username.includes(search));
+
+            item.style.display = show ? 'block' : 'none';
+
+            if (show) patientCount++;
+        });
+        
+        document.getElementById('patient-count').textContent = `${patientCount == "{{ patients|length }}" ? `All ${patientCount}` : patientCount}`;
+
+        items.sort((a, b) => {
+            const timestampA = parseInt(a.getAttribute('data-timestamp'));
+            const timestampB = parseInt(b.getAttribute('data-timestamp'));
+
+            return sort === 'asc' ? timestampA - timestampB : timestampB - timestampA;
+        });
+
+        items.forEach(item => patientsList.appendChild(item));
+    }
+
+    filterRole.addEventListener('change', applyFiltersAndSort);
+    sortOrder.addEventListener('change', applyFiltersAndSort);
+    searchUsername.addEventListener('input', applyFiltersAndSort);
+
+    applyFiltersAndSort();
+
+    function handleExport() {
+        const exportButton = document.querySelector('.export-button');
+        
+        // Update button UI for loading state
+        setButtonState(exportButton, true);
+    
+        fetch(getExportUrl())
+            .then(response => response.blob())
+            .then(blob => {
+                triggerFileDownload(blob, 'patients.csv');
+                setButtonState(exportButton, false);
+            });
+    }
+    
+    function setButtonState(button, isLoading) {
+        if (isLoading) {
+            button.innerHTML = /*html*/`Exporting... <span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>`;
+            button.style.cursor = 'not-allowed';
+            button.style.backgroundColor = 'var(--accent-color-light)';
+            button.style.color = 'var(--accent-invert-light)';
+        } else {
+            button.innerHTML = /*html*/`Export <i class="material-icons" style="font-size: 20px; color: var(--accent-invert)">download</i>`;
+            button.style.cursor = 'pointer';
+            button.style.backgroundColor = 'var(--accent-color)';
+            button.style.color = 'var(--accent-invert)';
+        }
+    }
+    
+    function getExportUrl() {
+        return `{% url 'dashboard:export' %}?filter=${encodeURIComponent(searchUsername.value)}`;
+    }
+    
+    function triggerFileDownload(blob, filename) {
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+    }
+    
+</script>
+{% endblock %}

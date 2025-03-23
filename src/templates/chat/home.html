@@ -622,7 +622,9 @@
         <div class="account-menu collapsable close">
           <div class="account-menu-item menu-head item-off">
             <div class="account-menu-item-content">
-              <span>{{ user.email }}</span>
+              <span>{{ user.username }}
+                <span style="font-size: 12px; color: #777;">{{ user.email }}</span>
+              </span>
             </div>
           </div>
 
@@ -757,6 +759,7 @@
       const sendButton = document.getElementById("send-button");
       const overlay = document.getElementById("overlay");
       const logoutBtn = document.getElementById("logout-btn");
+      const profileBtn = document.getElementById("profile");
       const abortBtn = document.getElementById("abort-btn");
       const profilePic = document.getElementById("profile-pic");
       const accountMenu = document.querySelector(".account-menu");
@@ -1093,6 +1096,10 @@
       logoutBtn.addEventListener("click", () =>
         openPopup("logout", "This will log you out. Continue?")
       );
+      profileBtn.addEventListener("click", () => {
+        // go to url "accounts:profile"
+        document.location.href = "{% url 'accounts:profile' %}";
+      });
       abortBtn.addEventListener("click", () =>
         openPopup(
           "abort",
@@ -1110,6 +1117,12 @@
           !accountMenu.contains(event.target) &&
           event.target !== profilePic
         ) {
+          accountMenu.classList.add("close");
+          accountMenu.classList.remove("open");
+        }
+      });
+      document.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") {
           accountMenu.classList.add("close");
           accountMenu.classList.remove("open");
         }

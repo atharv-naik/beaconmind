@@ -1,0 +1,54 @@
+{% extends 'dashboard/base.html' %}
+
+{% block header %}
+Settings <span style="font-size: 12px; color: var(--text-color);">
+    / Dashboard
+</span>
+{% endblock %}
+
+{% block content %}
+<div style="padding: 0 20px;">
+    <div id="settings" style="margin-top: 20px; color: var(--text-color);">
+
+        <div class="item" style="display: flex; align-items: center; justify-content: space-between;">
+            <div style="display: flex; align-items: center; gap: 10px;">
+                <div class="item-icon">
+                    <span class="material-icons">settings</span>
+                </div>
+                <div class="item-details">
+                    <div style="font-size: 24px; display: flex; align-items: center; gap: 10px;">
+                        Patient Alerts
+                        <span id="experimental" style="color: var(--accent-color); font-size: 14px">[Experimental]</span>
+                    </div>
+                    <p style="opacity: 0.8;">
+                        Receive email alerts when a patient is suspected to have a serious condition(s).
+                    </p>
+                </div>
+            </div>
+            <div class="item-icon" data-value="{{ user.doctor.receive_patient_alerts }}">
+
+                <div class="cl-toggle-switch">
+                    <label class="cl-switch">
+                        <input type="checkbox"
+                                {% if not user.doctor %}disabled{% endif %}
+                               {% if user.doctor.receive_patient_alerts %}checked{% endif %}
+                               data-url="{% url 'dashboard:toggle-alerts' user.id %}">
+                        <span></span>
+                    </label>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block styles %}
+{% include "dashboard/components/toggle-switch.html" %}
+{% endblock %}
+
+{% block scripts %}
+{% include "dashboard/components/toggle-switch.html" %}
+<script>
+    document.querySelector('.nav-item.settings').classList.add('selected');
+</script>
+{% endblock %}

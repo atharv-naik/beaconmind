@@ -16,6 +16,11 @@ class ChatMessageSerializer(serializers.ModelSerializer):
             'timestamp',
         ]
 
+class ChatMessageAllSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = ChatMessage
+        fields = '__all__'
+
 class ConversationSerializer(serializers.ModelSerializer):
     class Meta:
         model= Conversation

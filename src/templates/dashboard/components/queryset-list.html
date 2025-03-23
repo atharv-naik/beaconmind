@@ -1,0 +1,39 @@
+{% load custom_filters %}
+
+{% for item in queryset %}
+<div class="item mb-3" onclick="window.location.href='{% url detail_url_name item.id %}'"
+    {% if extra_data %}
+        {% for key, value in extra_data.items %}
+            data-{{ key }}="{{ value }}"
+        {% endfor %}
+    {% endif %}
+    style="cursor: pointer;"
+    >
+    <div>
+        <h5 style="margin-bottom: 8px; font-size: 18px; color: var(--text-color);">
+            <i class="material-icons" style="vertical-align: middle; margin-right: 8px; color: var(--text-color);">{{ icon|default:'chat' }}</i>
+            {{ item.name|default:item }}
+            
+            {% if tags_field %}
+            <div class="assessment-tags" style="display: inline-block; margin-left: 10px;">
+                {% for tag in item|getattr:tags_field %}
+                <span style="margin-right: 5px; background-color: var(--accent-color); color: var(--accent-invert); border-radius: 12px; font-size: 12px; padding: 5px 10px; background-color: var(--{{ tag|getattr:tag_display_field|lower }}, var(--other)); color: black; opacity: 0.8;">
+                    {{ tag|getattr:tag_display_field }}</span>
+                {% endfor %}
+            </div>
+            {% endif %}
+        </h5>
+        
+        {% if status_field %}<p style="margin: 0; font-size: 14px; color: var(--text-color);"><strong>Status:</strong> {{ item|getattr:status_field|capfirst }}</p>{% endif %}
+        {% if timestamp_field %}<p style="margin: 0; font-size: 14px; color: var(--text-color);">{{ item|getattr:timestamp_field|timesince }} ago</p>{% endif %}
+    </div>
+</div>
+{% empty %}
+<div class="empty-state" style="margin-top: 20px; text-align: center;">
+    <div class="icon">
+        <i class="material-icons" style="font-size: 48px; color: var(--icon-fill);">sentiment_very_dissatisfied</i>
+    </div>
+    <h3 style="font-size: 24px; color: var(--text-color);">No Records Found</h3>
+    <p style="font-size: 14px; color: var(--text-color-light); margin-top: 10px;">No items found for this list.</p>
+</div>
+{% endfor %}

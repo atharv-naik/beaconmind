@@ -1,5 +1,6 @@
 from django.conf import settings
 from django.db import models
+from django.urls import reverse
 from django.utils import timezone
 from shortuuid.django_fields import ShortUUIDField
 
@@ -55,6 +56,12 @@ class ChatSession(models.Model):
         ordering = ['timestamp']
         verbose_name = 'Chat Session'
         verbose_name_plural = 'Chat Sessions'
+
+        get_latest_by = 'timestamp'
+    
+    def get_absolute_url(self):
+        return reverse("chat:session-page", kwargs={"session_id": self.pk})
+    
 
     def __str__(self):
         return f"{self.conversation.user.username} - session @ {timezone.localtime(self.timestamp).strftime('%b. %d, %Y, %I:%M %p').lower().capitalize()}"

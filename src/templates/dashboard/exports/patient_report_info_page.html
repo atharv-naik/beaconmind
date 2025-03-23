@@ -1,0 +1,125 @@
+{% block styles %}
+<style>
+    :root {
+        --accent-color: rgba(52, 58, 64);
+        --accent-invert: #ddd;
+        --sidebar-border: #4f5962;
+        --content-bg: #fff;
+        --content-block-bg: #f4f6f9;
+        --item-bg: #f4f6f9;
+        --text-color: #555;
+        --text-color-bold: #333;
+    }
+    
+    body {
+        font-family: Arial, sans-serif;
+        margin: 20px;
+        color: var(--text-color-bold);
+        background-color: var(--content-bg);
+    }
+    
+    .container {
+        padding: 20px;
+        border: 2px solid var(--accent-color);
+        border-radius: 10px;
+        background-color: var(--item-bg);
+    }
+    
+    h1, h2 {
+        color: var(--accent-color);
+        text-align: center;
+        font-weight: bold;
+    }
+    
+    .patient-info {
+        margin-bottom: 20px;
+    }
+    
+    .patient-info p {
+        font-size: 14px;
+        line-height: 1.5;
+        color: var(--text-color);
+    }
+    
+    table {
+        border-collapse: collapse;
+        width: 100%;
+        margin-top: 15px;
+    }
+    
+    th, td {
+        border: 1px solid var(--sidebar-border);
+        text-align: left;
+        padding: 10px;
+    }
+    
+    th {
+        background-color: var(--accent-color);
+        color: var(--accent-invert);
+        font-weight: bold;
+    }
+    
+    td {
+        background-color: var(--content-bg);
+    }
+    
+    tr:nth-child(even) td {
+        background-color: var(--item-bg);
+    }
+    
+</style>
+{% endblock %}
+
+<div class="container">
+  <h1>Patient Assessments Report</h1>
+  <div style="text-align: center; font-size: 18px; color: var(--text-color); margin-top: 10px;">
+    -- Between {{ date_range.0|date:"d M, Y" }} and {{ date_range.1|date:"d M, Y" }} --
+  </div>
+
+  <div class="contact-info" style="background-color: var(--content-block-bg);
+  color: var(--text-color); padding: 20px; border-radius: 10px; display: flex; flex-direction: column; font-size: 15px; line-height: 1.5;">
+    <div class="title" style="font-size: 18px; font-weight: 500; color: var(--text-color); margin-bottom: 20px;">
+      Contact Details
+    </div>
+    <div>
+      <div style="display: flex; gap: 20px; align-items: center;">
+        <span>Username: </span>
+        <span>{{ patient.user.username }}</span>
+      </div>
+      <div style="display: flex; gap: 20px; align-items: center;">
+        <span>Email:</span>
+        <span>{{ patient.user.email }}</span>
+      </div>
+      <div style="display: flex; gap: 20px; align-items: center;">
+        <span>Phone:</span>
+        <span style="display: flex; gap: 5px; align-items: center;">
+          {{ patient.user.phone|default:"Not Provided" }}
+      </span>
+      </div>
+      <div style="display: flex; gap: 20px; align-items: center; font-size: 12px; color: var(--text-color-light); margin-top: 10px; justify-content: flex-end;">
+        <span>Joined {{ patient.user.date_joined|date:"d M, Y" }}</span>
+      </div>
+    </div>
+  </div>
+
+
+  <h2>Recent Sessions</h2>
+  <table>
+    <thead>
+      <tr>
+        <th>Session Date</th>
+        <th>Session ID</th>
+        <th>Status</th>
+      </tr>
+    </thead>
+    <tbody>
+      {% for session in sessions %}
+      <tr>
+        <td>{{ session.timestamp|date:"d M Y" }}</td>
+        <td>{{ session.id }}</td>
+        <td>{{ session.status }}</td>
+      </tr>
+      {% endfor %}
+    </tbody>
+  </table>
+</div>

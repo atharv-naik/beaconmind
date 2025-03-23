@@ -10,6 +10,9 @@
     <style>
       :root {
         --accent-color: rgba(52, 58, 64);
+        --accent-invert: #ddd;
+        --accent-color-faint: rgba(52, 58, 64, 0.42);
+        --accent-color-extra-faint: rgba(52, 58, 64, 0.1);
 
         --sidebar-width: 225px;
         --bg-color: #f4f6f9;
@@ -27,6 +30,7 @@
         --item-border-radius: 4px;
         --content-block-bg: #f4f6f973;
         --text-color: #555;
+        --text-color-light: #777;
         --icon-fill: #555;
         --chart-bars-bg: rgba(52, 58, 64, 0.8);
         --chart-grid-color: #ccc;
@@ -39,6 +43,9 @@
 
       :root.dark-theme {
         --accent-color: #d4adfc;
+        --accent-invert: #000;
+        --accent-color-faint: rgba(213, 173, 252, 0.34);
+        --accent-color-extra-faint: rgba(213, 173, 252, 0.1);
 
         --sidebar-width: 225px;
         --bg-color: #2a2d31;
@@ -56,6 +63,7 @@
         --item-border-radius: 4px;
         --content-block-bg: #23262c;
         --text-color: #ffffff;
+        --text-color-light: #ccc;
         --icon-fill: #cccccc;
         --chart-bars-bg: #62b6cb;
         --chart-bars-bg: #d4adfc;
@@ -115,6 +123,10 @@
         background-color: var(--sidebar-hover-bg);
       }
 
+      .nav-item.selected {
+        background-color: var(--sidebar-hover-bg);
+      }
+
       ul a,
       ul a:hover {
         color: inherit;
@@ -171,6 +183,97 @@
         cursor: default !important;
         pointer-events: none;
       }
+
+      {% comment %} scrollbar track theme based bg color {% endcomment %}
+      ::-webkit-scrollbar {
+        width: 10px;
+      }
+      ::-webkit-scrollbar-track {
+        background: var(--bg-color);
+      }
+      ::-webkit-scrollbar-thumb {
+        background: var(--accent-color);
+      }
+
+      {% comment %} popup styles {% endcomment %}
+      #overlay {
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        background-color: rgba(0, 0, 0, 0.5);
+        z-index: 1000;
+        visibility: hidden;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+      }
+
+      #popup.fancy {
+        background-color: black;
+        color: white;
+        border: 2px solid var(--accent-color-faint);
+        height: 200px;
+        width: 300px;
+        flex-direction: column;
+        justify-content: space-between;
+      }
+
+      #popup {
+        background-color: var(--content-bg);
+        color: var(--text-color);
+        padding: 20px;
+        border-radius: 8px;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        display: flex;
+        flex-direction: column;
+        gap: 20px;
+      }
+
+      .popup-upper {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        flex: 1;
+      }
+
+      .popup-lower {
+        display: flex;
+        justify-content: space-between;
+        gap: 20px;
+      }
+
+      .popup-btn {
+        padding: 5px 20px;
+        border-radius: 6px;
+        cursor: pointer;
+        outline: none;
+        border: none;
+        width: 100px;
+      }
+
+      .btn-left {
+        background-color: #f4f6f9;
+      }
+
+      .btn-right {
+        background-color: var(--accent-color);
+        color: var(--accent-invert);
+      }
+
+      .btn-right:hover {
+        opacity: 0.8;
+      }
+
+      .show {
+        display: flex;
+      }
+
+      .hide {
+        display: none;
+      }
+
     </style>
     <link
       rel="stylesheet"
@@ -183,6 +286,23 @@
     {% block styles %}{% endblock %} {% block links %}{% endblock %}
   </head>
   <body>
+    <div id="overlay">
+      <div id="popup" class="fancy" style="position: relative; padding-top: 50px;">
+        <div class="popup-head" style="background-color: var(--accent-color); color: var(--accent-invert); position: absolute; left: 0; right:0; top: 0; padding: 10px; border-radius: 8px 8px 0 0;">
+          <span>Logout Request</span>
+        </div>
+        <div class="popup-upper">
+          <span class="popup-title">Loading...</span>
+        </div>
+        <div class="popup-lower">
+          <button class="popup-btn btn-left" onclick="closePopup()">
+            Cancel
+          </button>
+          <button class="popup-btn btn-right" onclick="proceed()">Ok</button>
+        </div>
+      </div>
+    </div>
+
     <div class="dashboard-container">
       <div class="sidebar">
         <a
@@ -210,55 +330,76 @@
         </a>
         <ul class="nav-menu">
           <a href="{% url 'dashboard:home' %}">
-            <li class="nav-item">
+            <li class="nav-item home">
               <i class="material-icons" style="float: left; margin-right: 5px"
                 >home</i
               >
               Home
             </li>
           </a>
-          <a href="#">
-            <li class="nav-item">
+          <a href="{% url 'dashboard:patients' %}">
+            <li class="nav-item patients">
+              <i class="material-icons" style="float: left; margin-right: 5px"
+                >people</i
+              >
+              Patients
+            </li>
+          </a>
+          <a href="{% url 'dashboard:sessions' %}">
+            <li class="nav-item sessions">
+              <i class="material-icons" style="float: left; margin-right: 5px"
+                >chat</i
+              >
+              Sessions
+            </li>
+          </a>
+          <a href="{% url 'dashboard:assessments' %}">
+            <li class="nav-item assessments">
               <i class="material-icons" style="float: left; margin-right: 5px"
                 >assignment</i
               >
               Assessments
             </li>
           </a>
-          <a href="{% url 'admin:index' %}">
-            <li class="nav-item">
+          <a href="{% url 'dashboard:settings' %}">
+            <li class="nav-item settings">
               <i class="material-icons" style="float: left; margin-right: 5px"
-                >admin_panel_settings</i
+                >settings</i
               >
-              Admin
+              Settings
             </li>
           </a>
-          <li class="nav-item">
-            <form
-              method="POST"
-              action="{% url 'accounts:logout' %}"
-              style="display: inline"
-            >
-              {% csrf_token %}
-              <button
-                type="submit"
-                class="btn btn-link nav-link"
-                style="
-                  padding: 0;
-                  color: inherit;
-                  text-decoration: none;
-                  width: 100%;
-                  text-align: left;
-                "
-              >
+          {% if request.user.is_staff %}
+            <a href="{% url 'admin:index' %}">
+              <li class="nav-item admin">
                 <i class="material-icons" style="float: left; margin-right: 5px"
-                  >logout</i
+                  >admin_panel_settings</i
                 >
-                Logout
-              </button>
-            </form>
+                Admin
+              </li>
+            </a>
+          {% endif %}
+          <li class="nav-item logout">
+            <div onclick="openPopup('logout', 'This will log you out. Continue?')" style="cursor: pointer">
+              <i class="material-icons" style="float: left; margin-right: 5px"
+                >logout</i
+              >
+              Logout
+            </div>
           </li>
         </ul>
+
+        {% comment %} login info bottom {% endcomment %}
+        <div style="position: absolute; bottom: 20px;">
+          <div style="padding: 10px; border-top: 1px solid var(--sidebar-border)">
+            <p style="margin: 0; font-size: 14px; color: var(--sidebar-text-color)">
+              Logged in as
+              <a href="{% url 'accounts:profile' %}" style="color: inherit">
+                <strong>{{ request.user.username }}</strong>
+              </a>
+            </p>
+          </div>
+        </div>
       </div>
       <div class="main-content">
         <div class="header">
@@ -281,7 +422,18 @@
             </div>
           </div>
         </div>
-        <div class="content">{% block content %} {% endblock %}</div>
+        <div class="content">
+          {% block content %}
+          <div style="color:var(--text-color); display: flex; align-items: center; justify-content: center; height: 100%; font-size: 20px; font-weight: bold;">
+            <div style="display: grid; place-items: center; gap: 10px;">
+                <div style="font-size: 50px; color: var(--accent-color)">
+                    <i class="material-icons">search</i>
+                </div>
+                Not implemented yet
+            </div>
+          </div>
+          {% endblock %}
+        </div>
       </div>
     </div>
 
@@ -304,6 +456,83 @@
           document.documentElement.classList.add("dark-theme");
         }
       })();
+
+
+      function logout() {
+        fetch("{% url 'accounts:logout' %}", {
+          method: "POST",
+          headers: {
+            "X-CSRFToken": getCookie("csrftoken"),
+          },
+        })
+          .then((response) => {
+            if (response.ok) {
+              window.location.href = "{% url 'accounts:login' %}";
+            }
+          })
+          .catch((error) => {
+            console.error("Error:", error);
+          });
+      }
+
+
+            // popup menu
+            popup = document.querySelector("#popup");
+            function openPopup(action = "", title = "") {
+              overlay.style.visibility = "visible";
+              popup.classList.add("show");
+      
+              // set action in popup div
+              const popupTitle = document.querySelector(".popup-title");
+              popupTitle.textContent = title;
+      
+              // set action in popup data value
+              const popupData = document.querySelector(".popup-btn.btn-right");
+              popupData.setAttribute("data-action", action);
+            }
+      
+            function closePopup() {
+              overlay.style.visibility = "hidden";
+              popup.classList.remove("show");
+            }
+      
+            function proceed() {
+              const action = document
+                .querySelector(".popup-btn.btn-right")
+                .getAttribute("data-action");
+              if (action === "logout") {
+                logout();
+              }
+              if (action === "abort") {
+                // TODO
+              }
+              if (action === "new_session") {
+                location.reload();
+              }
+              closePopup();
+            }
+
+      // esc closes popup
+      document.addEventListener("keydown", (e) => {
+        if (e.key === "Escape") {
+          closePopup();
+        }
+      });
+
+
+      // Function to get CSRF token from cookies
+      function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            document.cookie.split(';').forEach(cookie => {
+                let trimmed = cookie.trim();
+                if (trimmed.startsWith(name + '=')) {
+                    cookieValue = decodeURIComponent(trimmed.split('=')[1]);
+                }
+            });
+        }
+        return cookieValue;
+    }
     </script>
     {% block scripts %}{% endblock %}
   </body>
